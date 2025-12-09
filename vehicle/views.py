@@ -803,9 +803,16 @@ class AllVehiclesListView(ListAPIView):
             base_qs = base_qs.order_by(ordering)
             all_vehicles.extend(list(base_qs))
 
+        # Для админов и менеджеров: неверифицированные первыми
+        if user.is_authenticated and user.role in ['admin', 'manager']:
+            return sorted(
+                all_vehicles,
+                key=lambda obj: (obj.verified, -getattr(obj, ordering.strip('-'), 0) if ordering.startswith('-') else getattr(obj, ordering.strip('-'), 0)),
+            )
+        
         return sorted(
             all_vehicles,
-            key=lambda obj: getattr(obj, ordering.strip('-')),
+            key=lambda obj: getattr(obj, ordering.strip('-'), 0),
             reverse=ordering.startswith('-')
         )
 
