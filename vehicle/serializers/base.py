@@ -430,13 +430,16 @@ class BaseVehicleListSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.BooleanField())
     def get_is_super_host(self, obj):
-        return obj.owner.lessor.super_host
+        if hasattr(obj.owner, 'lessor'):
+            return obj.owner.lessor.super_host
+        return False
 
     @extend_schema_field(serializers.DictField())
     def get_lessor(self, obj):
         owner = obj.owner
+        lessor_id = owner.lessor.id if hasattr(owner, 'lessor') else None
         return {
-            "id": owner.lessor.id,
+            "id": lessor_id,
             "user_id": owner.id,
             "first_name": owner.first_name,
             "last_name": owner.last_name,
