@@ -165,7 +165,8 @@ class AutoViewSet(BaseViewSet):
         if user.is_authenticated:
             if user.role in ['admin', 'manager']:
                 # Неверифицированные первыми для админов/менеджеров
-                return queryset.order_by('verified', '-created_at').distinct()
+                ordering = self.request.query_params.get('ordering', '-created_at')
+                return queryset.order_by('verified', ordering).distinct()
             else:
                 is_renter = hasattr(user, 'renter')
                 is_lessor = hasattr(user, 'lessor')
@@ -230,7 +231,8 @@ class BikeViewSet(BaseViewSet):
         if user.is_authenticated:
             if user.role in ['admin', 'manager']:
                 # Неверифицированные первыми для админов/менеджеров
-                return queryset.order_by('verified', '-created_at').distinct()
+                ordering = self.request.query_params.get('ordering', '-created_at')
+                return queryset.order_by('verified', ordering).distinct()
             else:
                 is_renter = hasattr(user, 'renter')
                 is_lessor = hasattr(user, 'lessor')
@@ -292,7 +294,8 @@ class ShipViewSet(BaseViewSet):
         if user.is_authenticated:
             if user.role in ['admin', 'manager']:
                 # Неверифицированные первыми для админов/менеджеров
-                return queryset.order_by('verified', '-created_at').distinct()
+                ordering = self.request.query_params.get('ordering', '-created_at')
+                return queryset.order_by('verified', ordering).distinct()
             else:
                 is_renter = hasattr(user, 'renter')
                 is_lessor = hasattr(user, 'lessor')
@@ -353,7 +356,8 @@ class HelicopterViewSet(BaseViewSet):
         if user.is_authenticated:
             if user.role in ['admin', 'manager']:
                 # Неверифицированные первыми для админов/менеджеров
-                return queryset.order_by('verified', '-created_at').distinct()
+                ordering = self.request.query_params.get('ordering', '-created_at')
+                return queryset.order_by('verified', ordering).distinct()
             else:
                 is_renter = hasattr(user, 'renter')
                 is_lessor = hasattr(user, 'lessor')
@@ -414,7 +418,8 @@ class SpecialTechnicViewSet(BaseViewSet):
         if user.is_authenticated:
             if user.role in ['admin', 'manager']:
                 # Неверифицированные первыми для админов/менеджеров
-                return queryset.order_by('verified', '-created_at').distinct()
+                ordering = self.request.query_params.get('ordering', '-created_at')
+                return queryset.order_by('verified', ordering).distinct()
             else:
                 is_renter = hasattr(user, 'renter')
                 is_lessor = hasattr(user, 'lessor')
