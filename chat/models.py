@@ -232,10 +232,20 @@ class RequestRent(models.Model):
                 else:
                     self.on_request = False
 
+            # Сохраняем для получения pk
+            super(RequestRent, self).save(*args, **kwargs)
+            
+            # Для обычных поездок (не по запросу) создаём платёж сразу
+            # Для поездок по запросу - ждём подтверждения арендодателя
+            if not self.on_request:
+                with transaction.atomic():
+                    self.create_payment()
+            return  # Выходим после первого сохранения
+
         else:
             original = RequestRent.objects.get(pk=self.pk)
-            if original.status != 'accept' and self.status == 'accept':
-                # ИЗМЕНЕНИЕ: Сначала сохраняем, потом создаем платеж
+            # Для поездок по запросу: платёж создаётся при подтверждении
+            if self.on_request and original.status != 'accept' and self.status == 'accept':
                 super(RequestRent, self).save(*args, **kwargs)
                 with transaction.atomic():
                     self.create_payment()
