@@ -29,7 +29,7 @@ from influencer.models import Influencer, RegistrationSource, ReferralLink, QRCo
 from manager.permissions import ManagerObjectPermission
 from notification.models import Notification, FCMToken
 from vehicle.models import Vehicle
-from .filters import RenterDocumentsFilter
+from .filters import RenterDocumentsFilter, UserFilter
 from .models import User, RenterDocuments, Renter, Rating, FavoriteList, Lessor, Currency, Language
 from .permissions import IsAdminOrSelf, IsAdminOrOwner, HasRenter, IsAdminOrSelfOrDirector
 from .serializers import RegisterSerializer, ChangePasswordSerializer, UserListSerializer, UserDetailSerializer, \
@@ -240,6 +240,8 @@ class SetPasswordView(APIView):
                             /?promocode=<promocode>""")
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = UserFilter
 
     def get_queryset(self):
         if self.action == 'list':
