@@ -152,7 +152,7 @@ class AutoViewSet(BaseViewSet):
     queryset = Auto.objects.all()
     filter_backends = (DjangoFilterBackend, OrderingFilter)
     filterset_class = AutoFilter
-    ordering_fields = ['price', 'count_trip', 'average_rating', 'created_at']
+    ordering_fields = ['price', 'count_trip', 'average_rating', 'created_at', 'year', 'verified']
     ordering = ['-average_rating']
 
     def get_queryset(self):
@@ -164,9 +164,8 @@ class AutoViewSet(BaseViewSet):
                                       'features_additionally', 'availabilities', 'documents', 'rent_prices'))
         if user.is_authenticated:
             if user.role in ['admin', 'manager']:
-                # Неверифицированные первыми для админов/менеджеров
-                ordering = self.request.query_params.get('ordering', '-created_at')
-                return queryset.order_by('verified', ordering).distinct()
+                # Админы видят весь транспорт
+                return queryset.distinct()
             else:
                 is_renter = hasattr(user, 'renter')
                 is_lessor = hasattr(user, 'lessor')
@@ -179,6 +178,25 @@ class AutoViewSet(BaseViewSet):
         if not self.request.query_params.get('ordering'):
             queryset = queryset.order_by('-average_rating')
         return queryset.distinct()
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        # Для админов/менеджеров: неверифицированные первыми
+        if request.user.is_authenticated and request.user.role in ['admin', 'manager']:
+            unverified = queryset.filter(verified=False)
+            verified = queryset.filter(verified=True)
+            from itertools import chain
+            queryset = list(chain(unverified, verified))
+            
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
+        
+        return super().list(request, *args, **kwargs)
 
     def get_serializer_class(self):
         if self.action == 'retrieve':

@@ -171,7 +171,7 @@ class BaseVehicleAdmin(admin.ModelAdmin):
     list_display_links = ('brand', 'model', 'owner', 'city',)
     search_fields = ('brand__name', 'model__name', 'year', 'owner__email', 'city__title', )
     list_filter = ('brand', 'model', 'year', 'owner', 'city__title', 'verified')
-    ordering = ('-year',)
+    ordering = ('verified', '-created_at')  # Неверифицированные первыми
     list_per_page = 20
     readonly_fields = ('get_average_rating',)
 
