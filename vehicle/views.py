@@ -850,7 +850,20 @@ class AllVehiclesListView(ListAPIView):
                     serialized_data.append(serializer_cls(obj).data)
                     break
 
-        return paginator.get_paginated_response(serialized_data)
+        response = paginator.get_paginated_response(serialized_data)
+        
+        # Добавляем счётчики неверифицированного транспорта для админов/менеджеров
+        if request.user.is_authenticated and request.user.role in ['admin', 'manager']:
+            unverified_counts = {
+                'auto': Auto.objects.filter(verified=False).count(),
+                'bike': Bike.objects.filter(verified=False).count(),
+                'ship': Ship.objects.filter(verified=False).count(),
+                'helicopter': Helicopter.objects.filter(verified=False).count(),
+                'specialtechnic': SpecialTechnic.objects.filter(verified=False).count(),
+            }
+            response.data['unverified_counts'] = unverified_counts
+        
+        return response
 
 
 @extend_schema(summary="Удаление фото транспорта", description="Удаление фото транспорта по id")
