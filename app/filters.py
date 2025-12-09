@@ -11,7 +11,7 @@ class RenterDocumentsFilter(filters.FilterSet):
 
 
 class UserFilter(filters.FilterSet):
-    role = filters.ChoiceFilter(choices=User.ROLE_CHOICES)
+    role = filters.ChoiceFilter(choices=User.ROLES)
 
     class Meta:
         model = User
