@@ -216,8 +216,9 @@ class BaseChatConsumer(AsyncWebsocketConsumer):
             message = await self.save_message(user, message_content, file, self.language)
             message_data = self.format_message(message, user)
 
-            # Уведомления для оффлайн пользователей
-            await self.notify_offline_users(user.id)
+            # Уведомления для оффлайн пользователей отключены,
+            # т.к. сообщения в чате уже приходят как push-уведомления
+            # await self.notify_offline_users(user.id)
 
             # Отправление сообщения всем участникам чата
             await self.channel_layer.group_send(
