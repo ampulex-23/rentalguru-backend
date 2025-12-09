@@ -12,7 +12,8 @@ from notification.models import Notification
 def handle_request_rent_post_save(sender, instance, created, **kwargs):
     """Обработчик для создания чата и связанных записей поездок."""
     if created and instance.vehicle:
-        if instance.vehicle.availabilities.filter(on_request=True).exists() and instance.status == 'unknown':
+        # Для заявок по запросу: создаём чат и уведомляем арендодателя
+        if instance.on_request and instance.status == 'unknown':
             instance.create_chat()
 
             chat = Chat.objects.get(request_rent=instance)
@@ -22,8 +23,13 @@ def handle_request_rent_post_save(sender, instance, created, **kwargs):
                 content=f"Поступил запрос аренды на {instance.vehicle}",
                 url=f"wss://{HOST_URL.split('//')[1]}/ws/chat/{chat.pk}/"
             )
+        # Для обычных заявок: создаём чат сразу (платёж уже создан)
+        elif not instance.on_request:
+            instance.create_chat()
 
-    if instance.status == 'accept':
+    # Для заявок по запросу: при accept создаём чат и Trip
+    # Для обычных заявок: Trip создаётся после оплаты (в payment/views.py)
+    if instance.status == 'accept' and instance.on_request:
         instance.create_chat()
 
         chat = Chat.objects.get(request_rent=instance)
