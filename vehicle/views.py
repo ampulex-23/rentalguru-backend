@@ -104,10 +104,28 @@ class BaseViewSet(viewsets.ModelViewSet):
         try:
             partial = kwargs.pop('partial', False)
             instance = self.get_object()
-            logger.info(f"Updating vehicle {instance.id}. User: {request.user.id}, Data keys: {request.data.keys()}")
+            logger.info(f"Updating vehicle {instance.id}. User: {request.user.id}, Data keys: {request.data.keys()}, Files: {request.FILES.keys()}")
             serializer = self.get_serializer(instance, data=request.data, partial=partial)
             serializer.is_valid(raise_exception=True)
             self.perform_update(serializer)
+            
+            # Обработка загруженных фото из FormData
+            photos = request.FILES.getlist('photos')
+            if photos:
+                from .models import VehiclePhoto
+                from django.db.models import Max
+                existing_max_order = VehiclePhoto.objects.filter(vehicle=instance).aggregate(Max('order'))['order__max'] or 0
+                for i, photo_file in enumerate(photos):
+                    VehiclePhoto.objects.create(
+                        vehicle=instance,
+                        photo=photo_file,
+                        order=existing_max_order + i + 1
+                    )
+                logger.info(f"Added {len(photos)} photos to vehicle {instance.id}")
+            
+            # Перезагружаем instance для получения актуальных данных
+            instance.refresh_from_db()
+            serializer = self.get_serializer(instance)
             logger.info(f"Vehicle {instance.id} updated successfully")
             return Response(serializer.data)
         except Exception as e:
