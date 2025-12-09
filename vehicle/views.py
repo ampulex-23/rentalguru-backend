@@ -776,14 +776,16 @@ class AllVehiclesListView(ListAPIView):
 
             # фильтрация по пользователю
             if user.is_authenticated:
-                if hasattr(user, 'renter'):
+                if user.role in ['admin', 'manager']:
+                    # Админы и менеджеры видят весь транспорт
+                    if user.role == 'manager' and hasattr(user, 'manager'):
+                        cities = user.manager.cities.all().values_list('id', flat=True)
+                        if cities:
+                            base_qs = base_qs.filter(city__in=cities)
+                elif hasattr(user, 'renter'):
                     base_qs = base_qs.filter(verified=True)
                 elif hasattr(user, 'lessor'):
                     base_qs = base_qs.filter(owner=user)
-                elif hasattr(user, 'manager'):
-                    cities = user.manager.cities.all().values_list('id', flat=True)
-                    if cities:
-                        base_qs = base_qs.filter(city__in=cities)
             else:
                 base_qs = base_qs.filter(verified=True)
 
@@ -810,16 +812,12 @@ class AllVehiclesListView(ListAPIView):
 
         # Для админов и менеджеров: неверифицированные первыми
         if user.is_authenticated and user.role in ['admin', 'manager']:
-            return sorted(
-                all_vehicles,
-                key=lambda obj: (obj.verified, -getattr(obj, ordering.strip('-'), 0) if ordering.startswith('-') else getattr(obj, ordering.strip('-'), 0)),
-            )
+            # Сортируем: сначала неверифицированные (verified=False), потом верифицированные
+            unverified = [v for v in all_vehicles if not v.verified]
+            verified = [v for v in all_vehicles if v.verified]
+            return unverified + verified
         
-        return sorted(
-            all_vehicles,
-            key=lambda obj: getattr(obj, ordering.strip('-'), 0),
-            reverse=ordering.startswith('-')
-        )
+        return all_vehicles
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
