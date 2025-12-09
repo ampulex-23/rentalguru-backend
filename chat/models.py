@@ -50,25 +50,51 @@ class RequestRent(models.Model):
 
     @property
     def rental_days(self):
-        """Подсчитывает количество дней аренды."""
+        """
+        Подсчитывает количество дней аренды с учётом времени.
+        
+        Логика:
+        - 10 дек 18:00 → 11 дек 18:00 = 1 день (ровно 24 часа)
+        - 10 дек 18:00 → 11 дек 18:01 = 2 дня (больше 24 часов - округляем вверх)
+        - 10 дек 18:00 → 12 дек 18:00 = 2 дня (ровно 48 часов)
+        - 10 дек 18:00 → 12 дек 18:01 = 3 дня (больше 48 часов)
+        """
         if self.start_date and self.end_date:
-            # Считаем календарные дни: 23-24 число = 1 день, 23-25 = 2 дня
-            calendar_days = (self.end_date - self.start_date).days
+            import math
             
-            # Для почасовой аренды (аренда меньше суток)
-            if self.start_time and self.end_time and calendar_days == 0:
-                # Аренда в пределах одного календарного дня
-                from datetime import datetime
-                start_datetime = datetime.combine(self.start_date, self.start_time)
-                end_datetime = datetime.combine(self.end_date, self.end_time)
-                delta = end_datetime - start_datetime
-                total_hours = delta.total_seconds() / 3600
-                # Возвращаем дробное количество часов для почасового тарифа
-                return max(total_hours / 24, 0.01)  # Минимум 0.01 дня для корректных расчетов
+            # Определяем время начала и окончания
+            start_time = self.start_time if self.start_time else time(0, 0)
+            end_time = self.end_time if self.end_time else time(0, 0)
             
-            # Для обычной аренды: количество календарных дней
-            # 29 окт → 30 окт = 1 день (независимо от времени)
-            return max(1, calendar_days if calendar_days > 0 else 1)
+            # Создаём полные datetime объекты
+            start_datetime = datetime.combine(self.start_date, start_time)
+            end_datetime = datetime.combine(self.end_date, end_time)
+            
+            # Вычисляем разницу в секундах
+            delta = end_datetime - start_datetime
+            total_seconds = delta.total_seconds()
+            
+            if total_seconds <= 0:
+                return 1  # Минимум 1 день
+            
+            # Вычисляем количество полных 24-часовых периодов
+            total_hours = total_seconds / 3600
+            
+            # Для почасовой аренды (меньше 24 часов в пределах одного дня)
+            if total_hours < 24 and self.start_date == self.end_date:
+                # Возвращаем дробное значение для почасового тарифа
+                return max(total_hours / 24, 0.01)
+            
+            # Для дневной аренды: округляем вверх до целых дней
+            # Если ровно N*24 часа - это N дней
+            # Если больше N*24 часа хоть на секунду - это N+1 дней
+            days = total_hours / 24
+            
+            # Проверяем, есть ли "хвост" сверх целых дней
+            if days == int(days):
+                return max(1, int(days))
+            else:
+                return max(1, math.ceil(days))
         return 0
 
     def create_chat(self):
