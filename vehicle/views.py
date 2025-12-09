@@ -164,7 +164,8 @@ class AutoViewSet(BaseViewSet):
                                       'features_additionally', 'availabilities', 'documents', 'rent_prices'))
         if user.is_authenticated:
             if user.role in ['admin', 'manager']:
-                return queryset.distinct()
+                # Неверифицированные первыми для админов/менеджеров
+                return queryset.order_by('verified', '-created_at').distinct()
             else:
                 is_renter = hasattr(user, 'renter')
                 is_lessor = hasattr(user, 'lessor')
@@ -228,7 +229,8 @@ class BikeViewSet(BaseViewSet):
                                       'documents', 'rent_prices', 'photos'))
         if user.is_authenticated:
             if user.role in ['admin', 'manager']:
-                return queryset.distinct()
+                # Неверифицированные первыми для админов/менеджеров
+                return queryset.order_by('verified', '-created_at').distinct()
             else:
                 is_renter = hasattr(user, 'renter')
                 is_lessor = hasattr(user, 'lessor')
@@ -289,7 +291,8 @@ class ShipViewSet(BaseViewSet):
                                       'features_equipment', 'availabilities', 'documents', 'rent_prices', 'photos'))
         if user.is_authenticated:
             if user.role in ['admin', 'manager']:
-                return queryset.distinct()
+                # Неверифицированные первыми для админов/менеджеров
+                return queryset.order_by('verified', '-created_at').distinct()
             else:
                 is_renter = hasattr(user, 'renter')
                 is_lessor = hasattr(user, 'lessor')
@@ -299,7 +302,6 @@ class ShipViewSet(BaseViewSet):
                     queryset = queryset.filter(verified=True)
         else:
             queryset = queryset.filter(verified=True)
-            pass
         return queryset.distinct()
 
     def get_serializer_class(self):
@@ -350,7 +352,8 @@ class HelicopterViewSet(BaseViewSet):
                     .prefetch_related('payment_method', 'availabilities', 'documents', 'rent_prices', 'photos'))
         if user.is_authenticated:
             if user.role in ['admin', 'manager']:
-                return queryset.distinct()
+                # Неверифицированные первыми для админов/менеджеров
+                return queryset.order_by('verified', '-created_at').distinct()
             else:
                 is_renter = hasattr(user, 'renter')
                 is_lessor = hasattr(user, 'lessor')
@@ -358,10 +361,8 @@ class HelicopterViewSet(BaseViewSet):
                     queryset = queryset.filter(owner=user)
                 elif is_renter:
                     queryset = queryset.filter(verified=True)
-                    pass
         else:
             queryset = queryset.filter(verified=True)
-            pass
         return queryset.distinct()
 
     def get_serializer_class(self):
@@ -412,7 +413,8 @@ class SpecialTechnicViewSet(BaseViewSet):
                     .prefetch_related('payment_method', 'availabilities', 'documents', 'rent_prices', 'photos'))
         if user.is_authenticated:
             if user.role in ['admin', 'manager']:
-                return queryset.distinct()
+                # Неверифицированные первыми для админов/менеджеров
+                return queryset.order_by('verified', '-created_at').distinct()
             else:
                 is_renter = hasattr(user, 'renter')
                 is_lessor = hasattr(user, 'lessor')
@@ -420,10 +422,8 @@ class SpecialTechnicViewSet(BaseViewSet):
                     queryset = queryset.filter(owner=user)
                 elif is_renter:
                     queryset = queryset.filter(verified=True)
-                    pass
         else:
             queryset = queryset.filter(verified=True)
-            pass
         return queryset.distinct()
 
     def get_serializer_class(self):
