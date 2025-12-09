@@ -18,7 +18,7 @@ import json
 from RentalGuru.settings import HOST_URL
 from chat.models import MessageSupport, ChatSupport, Message, Chat, IssueSupport
 from manager.permissions import WebSocketPermissionChecker
-from notification.models import Notification
+from notification.models import Notification, send_push_notification
 from .tasks import translate_message
 import re
 
@@ -216,9 +216,8 @@ class BaseChatConsumer(AsyncWebsocketConsumer):
             message = await self.save_message(user, message_content, file, self.language)
             message_data = self.format_message(message, user)
 
-            # Уведомления для оффлайн пользователей отключены,
-            # т.к. сообщения в чате уже приходят как push-уведомления
-            # await self.notify_offline_users(user.id)
+            # Отправляем push-уведомления оффлайн пользователям
+            await self.send_chat_push_to_offline_users(user, message_content)
 
             # Отправление сообщения всем участникам чата
             await self.channel_layer.group_send(
@@ -270,7 +269,7 @@ class BaseChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def create_notifications_for_users(self, user_ids):
-        """ Создание уведомления """
+        """ Создание уведомления (устаревший метод, используется send_chat_push_to_offline_users) """
         from django.contrib.auth import get_user_model
         User = get_user_model()
 
@@ -282,6 +281,32 @@ class BaseChatConsumer(AsyncWebsocketConsumer):
             )
             # Отправляем push-уведомление
             notification.send_notification()
+
+    async def send_chat_push_to_offline_users(self, sender, message_content):
+        """
+        Отправляет push-уведомления о новом сообщении в чате оффлайн пользователям.
+        Не создаёт Notification объект (не дублирует во вкладке уведомлений).
+        """
+        chat_participants = await self.get_chat_participants()
+        connected_users = BaseChatConsumer.connected_users.get(self.chat_group_name, set())
+        offline_users = [user_id for user_id in chat_participants if
+                         user_id != sender.id and user_id not in connected_users]
+
+        if offline_users:
+            # Получаем имя отправителя
+            sender_name = sender.first_name or sender.email or 'Пользователь'
+            
+            # Обрезаем сообщение если слишком длинное
+            short_message = message_content[:100] + '...' if len(message_content) > 100 else message_content
+            
+            # Отправляем push напрямую каждому оффлайн пользователю
+            for user_id in offline_users:
+                send_push_notification.delay(
+                    user_id,
+                    short_message,
+                    notification_url=None,
+                    title=f'Сообщение от {sender_name}'
+                )
 
     async def handle_update_message(self, data):
         try:
