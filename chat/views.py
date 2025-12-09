@@ -547,7 +547,7 @@ class RequestRentViewSet(viewsets.ModelViewSet):
         request_rent = serializer.save()
 
         # Отправка уведомлений
-        url = f'{settings.HOST_URL}/chat/request_rents/{request_rent.id}'
+        url = f'{settings.FRONT_URL}/ru/lessor/applications'
         content = f'Вам поступила заявка на аренду {vehicle_instance}'
         Notification.objects.create(user=vehicle_instance.owner, content=content, url=url)
 
@@ -621,7 +621,7 @@ class RequestRentViewSet(viewsets.ModelViewSet):
                 # Здесь Trip будет создан в модели RequestRent
                 serializer.save(user=self.request.user)
 
-                url = f'{settings.HOST_URL}/chat/request_rents/{instance.id}'
+                url = f'{settings.FRONT_URL}/ru/renter/trips'
                 content = f'Заявка на аренду {vehicle_instance} одобрена. Дата начала {instance.start_date}'
                 Notification.objects.create(user=instance.organizer, content=content, url=url)
         else:
