@@ -7,15 +7,16 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from drf_spectacular.utils import extend_schema
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.views import APIView
 
 from RentalGuru import settings
-from .models import Notification
+from .models import Notification, FCMToken
 from .permissions import IsAdminOrOwner, IsAdmin
-from .serializers import NotificationSerializer
+from .serializers import NotificationSerializer, FCMTokenSerializer
 
 
 @extend_schema(summary="Уведомления", description="CRUD уведомлений")
@@ -41,9 +42,57 @@ class NotificationViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-@extend_schema(summary="FCM токен", description="FCM токен")
+@extend_schema(summary="FCM токен (тест)", description="Тестовая страница FCM токена")
 def get_fcm_token(request):
     return render(request, 'test_push.html')
+
+
+@extend_schema(
+    summary="Регистрация FCM токена",
+    description="""
+    Регистрация FCM токена для push-уведомлений.
+    
+    device_type:
+    - 'android' - Android устройство
+    - 'ios' - iOS устройство  
+    - 'web' - Web браузер
+    
+    Токен автоматически привязывается к текущему пользователю.
+    При повторной регистрации того же токена - обновляется привязка к пользователю.
+    """
+)
+class FCMTokenRegisterView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        serializer = FCMTokenSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {'message': 'FCM token registered successfully'},
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request):
+        """Удаление FCM токена (при выходе из приложения)"""
+        token = request.data.get('token')
+        if not token:
+            return Response(
+                {'error': 'Token is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        deleted, _ = FCMToken.objects.filter(token=token, user=request.user).delete()
+        if deleted:
+            return Response(
+                {'message': 'FCM token deleted successfully'},
+                status=status.HTTP_200_OK
+            )
+        return Response(
+            {'error': 'Token not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
 
 
 logger = logging.getLogger(__name__)

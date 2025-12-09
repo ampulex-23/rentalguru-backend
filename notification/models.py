@@ -33,10 +33,8 @@ class Notification(models.Model):
     def send_notification(self):
         if self.user.email_notification:
             send_email_notification.delay(self.id)
-        if self.user.push_notification:
-            url = self.get_absolute_url()
-            self.content = f'{self.content}\n{url}'
-            send_web_push_notification.delay(self.user.id, self.content, self.url)
+        # Отправляем push всегда (silent или обычный в зависимости от настройки пользователя)
+        send_push_notification.delay(self.user.id, self.content, self.url)
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -47,8 +45,16 @@ class Notification(models.Model):
 
 
 class FCMToken(models.Model):
+    DEVICE_TYPES = (
+        ('web', 'Web Browser'),
+        ('android', 'Android'),
+        ('ios', 'iOS'),
+    )
+    
     user = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name='Пользователь')
     token = models.CharField(max_length=255, unique=True, verbose_name='Токен')
+    device_type = models.CharField(max_length=10, choices=DEVICE_TYPES, default='web', verbose_name='Тип устройства')
+    is_active = models.BooleanField(default=True, verbose_name='Активен')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создан')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлен')
     last_used_at = models.DateTimeField(auto_now=True, verbose_name='Последнее использование')
@@ -58,7 +64,7 @@ class FCMToken(models.Model):
         verbose_name_plural = 'FCM токены'
 
     def __str__(self):
-        return str(self.token)
+        return f'{self.device_type}: {self.token[:20]}...'
 
 
 @shared_task
@@ -79,17 +85,25 @@ def send_email_notification(notification_id):
 
 
 @shared_task
-def send_web_push_notification(user_id, notification_body, notification_url=None):
+def send_push_notification(user_id, notification_body, notification_url=None, title='Rental-Guru'):
+    """
+    Отправка push-уведомлений на все устройства пользователя (web, android, ios).
+    Если у пользователя отключены push_notification - отправляем silent push (только data).
+    """
     User = apps.get_model(settings.AUTH_USER_MODEL)
 
     try:
         user = User.objects.prefetch_related('fcmtoken_set').get(id=user_id)
-        tokens = list(user.fcmtoken_set.values_list('token', flat=True))
+        fcm_tokens = list(user.fcmtoken_set.filter(is_active=True).values('token', 'device_type'))
     except User.DoesNotExist:
         return f"User with id {user_id} not found"
 
-    if not tokens:
+    if not fcm_tokens:
         return "No FCM tokens for user"
+    
+    # Проверяем настройку push_notification пользователя
+    # Если False - отправляем silent push (без звука и всплывающего уведомления)
+    is_silent = not user.push_notification
 
     # Получаем access_token через сервисный аккаунт
     try:
@@ -113,39 +127,88 @@ def send_web_push_notification(user_id, notification_body, notification_url=None
     successful_sends = 0
     failed_sends = 0
 
-    for token in tokens:
+    for fcm_token in fcm_tokens:
+        token = fcm_token['token']
+        device_type = fcm_token['device_type']
+        
+        # Базовая структура сообщения
         message = {
             "message": {
                 "token": token,
-                "notification": {
-                    "title": "Rental-Guru",
-                    "body": notification_body
-                },
-                "webpush": {
-                    "headers": {
-                        "Urgency": "high",
-                        "TTL": "86400"  # 24 часа
-                    },
-                    "notification": {
-                        "title": "Rental-Guru",
-                        "body": notification_body,
-                        "icon": "https://rentalguru.ru/static/firebase-logo.png",
-                        "badge": "https://rentalguru.ru/static/firebase-logo.png",
-                        "click_action": notification_url or "https://rentalguru.ru",
-                        "requireInteraction": True,
-                        "actions": [
-                            {
-                                "action": "open",
-                                "title": "Открыть"
-                            }
-                        ]
-                    },
-                    "data": {
-                        "url": notification_url or "https://rentalguru.ru"
-                    }
+                "data": {
+                    "title": title,
+                    "body": notification_body,
+                    "url": notification_url or "https://rentalguru.ru",
+                    "click_action": "FLUTTER_NOTIFICATION_CLICK"
                 }
             }
         }
+        
+        # Добавляем notification блок только если не silent mode
+        if not is_silent:
+            message["message"]["notification"] = {
+                "title": title,
+                "body": notification_body
+            }
+        
+        # Платформо-специфичные настройки
+        if device_type == 'web':
+            message["message"]["webpush"] = {
+                "headers": {
+                    "Urgency": "high",
+                    "TTL": "86400"
+                },
+                "notification": {
+                    "title": title,
+                    "body": notification_body,
+                    "icon": "https://rentalguru.ru/static/firebase-logo.png",
+                    "badge": "https://rentalguru.ru/static/firebase-logo.png",
+                    "click_action": notification_url or "https://rentalguru.ru",
+                    "requireInteraction": True
+                } if not is_silent else {},
+                "data": {
+                    "url": notification_url or "https://rentalguru.ru"
+                }
+            }
+        elif device_type == 'android':
+            android_config = {
+                "priority": "high",
+                "data": {
+                    "click_action": "FLUTTER_NOTIFICATION_CLICK"
+                }
+            }
+            if not is_silent:
+                android_config["notification"] = {
+                    "channel_id": "rental_guru_channel",
+                    "sound": "default",
+                    "default_vibrate_timings": True,
+                    "default_light_settings": True
+                }
+            message["message"]["android"] = android_config
+        elif device_type == 'ios':
+            apns_config = {
+                "headers": {
+                    "apns-priority": "10" if not is_silent else "5"
+                },
+                "payload": {
+                    "aps": {
+                        "content-available": 1
+                    }
+                }
+            }
+            if not is_silent:
+                apns_config["payload"]["aps"].update({
+                    "alert": {
+                        "title": title,
+                        "body": notification_body
+                    },
+                    "sound": "default",
+                    "badge": 1
+                })
+            else:
+                # Silent push для iOS
+                apns_config["headers"]["apns-push-type"] = "background"
+            message["message"]["apns"] = apns_config
 
         try:
             response = requests.post(fcm_url, headers=headers, json=message, timeout=30)
