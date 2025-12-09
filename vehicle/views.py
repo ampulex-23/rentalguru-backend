@@ -861,7 +861,7 @@ class AllVehiclesListView(ListAPIView):
                 'helicopter': Helicopter.objects.filter(verified=False).count(),
                 'specialtechnic': SpecialTechnic.objects.filter(verified=False).count(),
             }
-            response.data['unverified_counts'] = unverified_counts
+            response.data['counts'] = unverified_counts
         
         return response
 
