@@ -229,8 +229,11 @@ class RequestsByFranchiseView(APIView):
             Q(owner__lessor__franchise=franchise) | Q(owner=franchise.director)
         )
         self.check_object_permissions(request, franchise)
+        
+        # Фильтруем только заявки со статусом 'unknown' (не рассмотренные)
         all_requests = RequestRent.objects.filter(
-            object_id__in=vehicles.values_list('id', flat=True)
+            object_id__in=vehicles.values_list('id', flat=True),
+            status='unknown'
         ).select_related('content_type')
 
         count_dict = {
@@ -259,8 +262,10 @@ class RequestsByFranchiseView(APIView):
             elif vehicle_type == 'special_technic':
                 vehicles = vehicles.instance_of(SpecialTechnic)
 
+        # Фильтруем только заявки со статусом 'unknown' (не рассмотренные)
         requests = RequestRent.objects.filter(
-            object_id__in=vehicles.values_list('id', flat=True)
+            object_id__in=vehicles.values_list('id', flat=True),
+            status='unknown'
         ).select_related('content_type')
 
         paginator = self.pagination_class()

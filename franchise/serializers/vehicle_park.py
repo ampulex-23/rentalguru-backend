@@ -156,7 +156,7 @@ class RequestRentSerializer(serializers.ModelSerializer):
         model = RequestRent
         fields = [
             'id', 'organizer', 'type', 'status', 'object', 'object_id', 'lessor_id', 'lessor_name', 'start_date',
-            'end_date', 'count_days', 'total_cost', 'chat_id'
+            'end_date', 'start_time', 'end_time', 'count_days', 'total_cost', 'chat_id'
         ]
 
     def get_lessor_name(self, obj):
@@ -175,9 +175,8 @@ class RequestRentSerializer(serializers.ModelSerializer):
         return str(vehicle) if vehicle else None
 
     def get_count_days(self, obj):
-        if obj.start_date and obj.end_date:
-            return (obj.end_date - obj.start_date).days + 1
-        return 0
+        # Используем свойство rental_days из модели для корректного подсчёта
+        return obj.rental_days if hasattr(obj, 'rental_days') else 0
 
     def get_chat_id(self, obj):
         chat = Chat.objects.filter(request_rent=obj).first()
