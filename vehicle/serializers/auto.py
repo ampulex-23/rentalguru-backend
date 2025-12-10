@@ -133,5 +133,13 @@ class AutoGetSerializer(BaseVehicleGetSerializer):
 
 
 class AutoListSerializer(BaseVehicleListSerializer):
+    body_type = AutoBodyTypeSerializer(read_only=True)
+    transmission = AutoTransmissionSerializer(read_only=True)
+    fuel_type = AutoFuelTypeSerializer(read_only=True)
+    vehicle_class = VehicleClassSerializer(read_only=True)
+
     class Meta(BaseVehicleListSerializer.Meta):
         model = Auto
+        fields = BaseVehicleListSerializer.Meta.fields + [
+            'body_type', 'transmission', 'fuel_type', 'vehicle_class', 'description', 'year', 'seats'
+        ]
