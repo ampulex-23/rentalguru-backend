@@ -334,7 +334,10 @@ class RequestRentSerializer(serializers.ModelSerializer):
                 representation['renter_first_name'] = renter.first_name
                 representation['renter_last_name'] = renter.last_name
 
-        if instance.status == 'accept':
+        # payment_id возвращается:
+        # - для обычных поездок (on_request=False) - сразу после создания
+        # - для поездок по запросу (on_request=True) - только после accept
+        if instance.status == 'accept' or not instance.on_request:
             if hasattr(instance, 'prefetched_payment_id') and instance.prefetched_payment_id is not None:
                 representation['payment_id'] = instance.prefetched_payment_id
             else:
