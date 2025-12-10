@@ -618,6 +618,26 @@ class RequestRentViewSet(viewsets.ModelViewSet):
                         end_date=availability['end_date']
                     )
 
+                # Автоматически отклоняем конфликтующие заявки на те же даты
+                conflicting_requests = RequestRent.objects.filter(
+                    content_type=instance.content_type,
+                    object_id=instance.object_id,
+                    status='unknown'
+                ).exclude(id=instance.id)
+                
+                for conflict in conflicting_requests:
+                    # Проверяем пересечение дат
+                    if not (conflict.end_date < instance.start_date or conflict.start_date > instance.end_date):
+                        conflict.status = 'denied'
+                        conflict.denied_reason = f'Даты {instance.start_date} - {instance.end_date} уже забронированы другим арендатором'
+                        conflict.save()
+                        
+                        # Уведомляем арендатора об отклонении
+                        Notification.objects.create(
+                            user=conflict.organizer,
+                            content=f'Заявка на аренду {vehicle_instance} отклонена: выбранные даты уже заняты'
+                        )
+
                 # Здесь Trip будет создан в модели RequestRent
                 serializer.save(user=self.request.user)
 
