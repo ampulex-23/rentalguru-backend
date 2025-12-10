@@ -23,9 +23,25 @@ def handle_request_rent_post_save(sender, instance, created, **kwargs):
                 content=f"Поступил запрос аренды на {instance.vehicle}",
                 url=f"wss://{HOST_URL.split('//')[1]}/ws/chat/{chat.pk}/"
             )
-        # Для обычных заявок: создаём чат сразу (платёж уже создан)
+        # Для обычных заявок: создаём чат и Trip со статусом 'started' сразу
         elif not instance.on_request:
             instance.create_chat()
+            
+            chat = Chat.objects.filter(request_rent=instance).first()
+            if chat:
+                # Создаём Trip со статусом 'started' чтобы пользователь мог продолжить оплату
+                Trip.objects.create(
+                    organizer=instance.organizer,
+                    content_type=instance.content_type,
+                    object_id=instance.object_id,
+                    start_date=instance.start_date,
+                    end_date=instance.end_date,
+                    start_time=instance.start_time,
+                    end_time=instance.end_time,
+                    total_cost=instance.total_cost,
+                    chat=chat,
+                    status='started'  # Ожидает оплату
+                )
 
     # Для заявок по запросу: при accept создаём чат и Trip
     # Для обычных заявок: Trip создаётся после оплаты (в payment/views.py)
