@@ -193,6 +193,12 @@ class TinkoffCallbackView(APIView):
 
             request_rent = payment.request_rent
             
+            # Меняем статус заявки на 'accept' после успешной оплаты
+            if request_rent.status == 'unknown':
+                request_rent.status = 'accept'
+                request_rent.save(update_fields=['status'])
+                logger.info(f"RequestRent {request_rent.id} статус изменён на 'accept' после оплаты")
+            
             if trip:
                 # Меняем статус только если поездка не отменена/завершена
                 if trip.status not in ['canceled', 'finished']:
