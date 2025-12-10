@@ -42,7 +42,7 @@ class BaseTripView(ListAPIView):
             'organizer', 'content_type', 'chat'
         ).prefetch_related(
             'organizer__renter'
-        ).order_by('-start_date')  # Свежие наверху
+        ).order_by('-id')  # Новые заявки первыми
 
         if user.role == 'admin':
             return base_qs
