@@ -16,11 +16,13 @@ from rest_framework.views import APIView
 
 from RentalGuru import settings
 from chat.models import Trip
+from chat.utils import subtract_periods
 from influencer.models import UsedPromoCode
 from notification.models import Notification
 from payment.TinkoffClient import TinkoffAPI
 from payment.models import Payment
 from payment.serializers import PaymentSerializer
+from vehicle.models import Availability
 
 logger = logging.getLogger('payment')
 
@@ -211,6 +213,43 @@ class TinkoffCallbackView(APIView):
                         status='current'
                     )
                     logger.info(f"Trip создан для чата {request_rent.chat.id} после успешной оплаты")
+                    
+                    # Для обычных поездок (не по запросу) вычитаем даты из availabilities
+                    if not request_rent.on_request:
+                        try:
+                            vehicle = request_rent.vehicle
+                            availabilities = list(vehicle.availabilities.filter(on_request=False).values('start_date', 'end_date'))
+                            
+                            if availabilities:
+                                # Преобразуем даты в строки
+                                for avail in availabilities:
+                                    avail['start_date'] = avail['start_date'].strftime('%Y-%m-%d')
+                                    avail['end_date'] = avail['end_date'].strftime('%Y-%m-%d')
+                                
+                                sub_period = {
+                                    'start_date': request_rent.start_date.strftime('%Y-%m-%d'),
+                                    'end_date': request_rent.end_date.strftime('%Y-%m-%d')
+                                }
+                                new_availabilities = subtract_periods(availabilities, sub_period)
+                                
+                                if not isinstance(new_availabilities, str):
+                                    # Удаляем старые availabilities (только не по запросу)
+                                    vehicle.availabilities.filter(on_request=False).delete()
+                                    # Создаём новые
+                                    for avail in new_availabilities:
+                                        Availability.objects.create(
+                                            vehicle=vehicle,
+                                            start_date=avail['start_date'],
+                                            end_date=avail['end_date'],
+                                            on_request=False
+                                        )
+                                    logger.info(f"Availabilities обновлены для vehicle {vehicle.id} после оплаты")
+                                else:
+                                    logger.warning(f"Не удалось вычесть период из availabilities: {new_availabilities}")
+                            else:
+                                logger.warning(f"У vehicle {vehicle.id} нет availabilities для вычитания")
+                        except Exception as e:
+                            logger.error(f"Ошибка обновления availabilities: {e}")
                 else:
                     logger.error(f"Не удалось создать Trip: у заявки {request_rent.id} нет чата")
             
