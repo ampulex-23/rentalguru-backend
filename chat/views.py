@@ -553,10 +553,10 @@ class RequestRentViewSet(viewsets.ModelViewSet):
 
         response_data = serializer.data
 
-        if request_rent.on_request:
-            chat = Chat.objects.filter(request_rent=request_rent).first()
-            if chat:
-                response_data['chat_id'] = chat.id
+        # Добавляем chat_id в ответ для всех типов заявок
+        chat = Chat.objects.filter(request_rent=request_rent).first()
+        if chat:
+            response_data['chat_id'] = chat.id
 
         return Response(response_data, status=status.HTTP_201_CREATED)
 
