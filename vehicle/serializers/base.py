@@ -354,9 +354,11 @@ class BaseVehicleGetSerializer(serializers.ModelSerializer):
         read_only_fields = ['owner', 'average_ratings', 'verified']
 
     def get_city_title(self, obj):
-        return obj.city.title
+        return obj.city.title if obj.city else None
 
     def get_commission(self, obj):
+        if not hasattr(obj.owner, 'lessor') or not obj.owner.lessor:
+            return None
         if obj.owner.lessor.franchise:
             return obj.owner.lessor.commission + Decimal(obj.owner.lessor.franchise.commission)
         return obj.owner.lessor.commission
