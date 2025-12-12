@@ -154,7 +154,10 @@ class ReferralLinkViewSet(viewsets.ModelViewSet):
         return ReferralLink.objects.filter(influencer__user=user).select_related('influencer__user')
 
     def perform_create(self, serializer):
-        serializer.save(influencer=self.request.user.influencer)
+        user = self.request.user
+        if not hasattr(user, 'influencer') or not user.influencer:
+            raise ValidationError({"detail": "У текущего пользователя нет связанного инфлюенсера."})
+        serializer.save(influencer=user.influencer)
 
 
 @extend_schema(summary="CRUD QR кодов", description="CRUD QR кодов")

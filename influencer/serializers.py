@@ -315,7 +315,10 @@ class ReferralLinkSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'influencer_id', 'influencer_name', 'link', 'count', 'income', 'turnover', 'created_at']
 
     def create(self, validated_data):
-        validated_data['influencer'] = self.context['request'].user.influencer
+        user = self.context['request'].user
+        if not hasattr(user, 'influencer') or not user.influencer:
+            raise serializers.ValidationError({"detail": "У текущего пользователя нет связанного инфлюенсера."})
+        validated_data['influencer'] = user.influencer
         referral_link = ReferralLink.objects.create(**validated_data)
         return referral_link
 
