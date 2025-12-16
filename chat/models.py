@@ -222,24 +222,57 @@ class RequestRent(models.Model):
             self.delivery_cost = self.vehicle.price_delivery if self.delivery else 0.00
             # Рассчитываем итоговую стоимость при создании
             self.total_cost = self.calculate_rent_price()
-            # Проверка является ли заявки по запросу
+            
+            # Определяем on_request на основе того, попадают ли даты в обычный availability
             from vehicle.models import Availability
-            availabilities = Availability.objects.filter(vehicle=self.vehicle)
-            for availability in availabilities:
-                if availability.on_request:
-                    self.on_request = True
-                    break
+            from chat.utils import is_period_contained
+            import logging
+            logger = logging.getLogger(__name__)
+            
+            # Проверяем, попадают ли выбранные даты в availability с on_request=False
+            if self.start_date and self.end_date:
+                regular_availabilities = list(Availability.objects.filter(
+                    vehicle=self.vehicle, 
+                    on_request=False
+                ).values('start_date', 'end_date'))
+                
+                if regular_availabilities:
+                    # Преобразуем даты в строки для is_period_contained
+                    for avail in regular_availabilities:
+                        avail['start_date'] = avail['start_date'].strftime('%Y-%m-%d')
+                        avail['end_date'] = avail['end_date'].strftime('%Y-%m-%d')
+                    
+                    sub_period = {
+                        'start_date': self.start_date.strftime('%Y-%m-%d'),
+                        'end_date': self.end_date.strftime('%Y-%m-%d')
+                    }
+                    
+                    # Если даты попадают в обычный availability - это обычная заявка
+                    if is_period_contained(regular_availabilities, sub_period):
+                        self.on_request = False
+                    else:
+                        self.on_request = True
                 else:
-                    self.on_request = False
+                    # Нет обычных availability - заявка по запросу
+                    self.on_request = True
+            else:
+                # Нет дат - заявка по запросу
+                self.on_request = True
+            
+            logger.info(f'RequestRent save: vehicle={self.vehicle}, vehicle_id={self.object_id}, on_request={self.on_request}')
 
             # Сохраняем для получения pk
             super(RequestRent, self).save(*args, **kwargs)
             
+            logger.info(f'RequestRent saved with pk={self.pk}, on_request={self.on_request}')
+            
             # Для обычных поездок (не по запросу) создаём платёж сразу
             # Для поездок по запросу - ждём подтверждения арендодателя
             if not self.on_request:
+                logger.info(f'Creating payment for RequestRent pk={self.pk}')
                 with transaction.atomic():
                     self.create_payment()
+                logger.info(f'Payment created for RequestRent pk={self.pk}')
             return  # Выходим после первого сохранения
 
         else:

@@ -299,12 +299,10 @@ class RequestRentSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
     def get_chat_id(self, obj):
-        if obj.on_request:
-            try:
-                return obj.chat.id
-            except (Chat.DoesNotExist, AttributeError):
-                return None
-        return None
+        try:
+            return obj.chat.id
+        except (Chat.DoesNotExist, AttributeError):
+            return None
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
