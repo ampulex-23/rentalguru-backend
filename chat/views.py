@@ -592,31 +592,38 @@ class RequestRentViewSet(viewsets.ModelViewSet):
                 except model.DoesNotExist:
                     raise DRFValidationError(f"Транспорт с ID {object_id} не найден.")
 
-                availabilities = list(vehicle_instance.availabilities.values('start_date', 'end_date'))
-                if not availabilities:
-                    raise DRFValidationError(
-                        "Данных о наличии свободных периодов аренды для этого транспорта не найдено.")
+                # Для заявок "по запросу" (on_request=True) не нужно вычитать даты из availabilities,
+                # так как транспорт сдаётся только по согласованию с арендодателем
+                if not instance.on_request:
+                    # Только для обычных заявок вычитаем даты из availabilities
+                    availabilities = list(vehicle_instance.availabilities.filter(
+                        on_request=False,
+                        start_date__isnull=False,
+                        end_date__isnull=False
+                    ).values('start_date', 'end_date'))
+                    
+                    if availabilities:
+                        # Преобразование дат в строки
+                        for availability in availabilities:
+                            availability['start_date'] = availability['start_date'].strftime('%Y-%m-%d')
+                            availability['end_date'] = availability['end_date'].strftime('%Y-%m-%d')
 
-                # Преобразование дат в строки
-                for availability in availabilities:
-                    availability['start_date'] = availability['start_date'].strftime('%Y-%m-%d')
-                    availability['end_date'] = availability['end_date'].strftime('%Y-%m-%d')
+                        sub_period = {'start_date': instance.start_date.strftime('%Y-%m-%d'),
+                                      'end_date': instance.end_date.strftime('%Y-%m-%d')}
+                        new_availabilities = subtract_periods(availabilities, sub_period)
 
-                sub_period = {'start_date': instance.start_date.strftime('%Y-%m-%d'),
-                              'end_date': instance.end_date.strftime('%Y-%m-%d')}
-                new_availabilities = subtract_periods(availabilities, sub_period)
+                        if isinstance(new_availabilities, str):
+                            raise DRFValidationError(new_availabilities)
 
-                if isinstance(new_availabilities, str):
-                    raise DRFValidationError(new_availabilities)
-
-                # Обновление или создание новых объектов Availability
-                vehicle_instance.availabilities.all().delete()
-                for availability in new_availabilities:
-                    Availability.objects.create(
-                        vehicle=vehicle_instance,
-                        start_date=availability['start_date'],
-                        end_date=availability['end_date']
-                    )
+                        # Обновление объектов Availability (только не on_request)
+                        vehicle_instance.availabilities.filter(on_request=False).delete()
+                        for availability in new_availabilities:
+                            Availability.objects.create(
+                                vehicle=vehicle_instance,
+                                start_date=availability['start_date'],
+                                end_date=availability['end_date'],
+                                on_request=False
+                            )
 
                 # Автоматически отклоняем конфликтующие заявки на те же даты
                 conflicting_requests = RequestRent.objects.filter(
