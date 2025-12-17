@@ -43,30 +43,7 @@ def handle_request_rent_post_save(sender, instance, created, **kwargs):
                     status='started'  # Ожидает оплату
                 )
 
-    # Для заявок по запросу: при accept создаём чат и Trip
-    # Для обычных заявок: Trip создаётся после оплаты (в payment/views.py)
+    # Для заявок по запросу: при accept только создаём чат (если его нет)
+    # Trip создаётся ТОЛЬКО после оплаты (в payment/views.py)
     if instance.status == 'accept' and instance.on_request:
         instance.create_chat()
-
-        chat = Chat.objects.get(request_rent=instance)
-
-        # Создаем Trip со статусом 'started' (В процессе) при accept
-        # НЕ проверяем оплату - она будет позже!
-        if not Trip.objects.filter(
-            object_id=instance.object_id,
-            start_date=instance.start_date,
-            end_date=instance.end_date,
-            status__in=['current', 'started']
-        ).exists():
-            Trip.objects.create(
-                organizer=instance.organizer,
-                content_type=instance.content_type,
-                object_id=instance.object_id,
-                start_date=instance.start_date,
-                end_date=instance.end_date,
-                start_time=instance.start_time,
-                end_time=instance.end_time,
-                total_cost=instance.total_cost,
-                chat=chat,
-                status='started'  # Статус "В процессе" - ждем оплату
-            )
