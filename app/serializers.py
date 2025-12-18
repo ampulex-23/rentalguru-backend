@@ -186,11 +186,17 @@ class RenterDetailSerializer(serializers.ModelSerializer):
 
 class LessorDetailSerializer(serializers.ModelSerializer):
     commission = serializers.FloatField()
+    renting_since = serializers.SerializerMethodField()
     
     class Meta:
         model = Lessor
-        fields = ['id', 'super_host', 'count_trip', 'average_response_time', 'commission']
-        read_only_fields = ['id', 'super_host', 'count_trip', 'average_response_time', 'commission']
+        fields = ['id', 'super_host', 'count_trip', 'average_response_time', 'commission', 'renting_since']
+        read_only_fields = ['id', 'super_host', 'count_trip', 'average_response_time', 'commission', 'renting_since']
+
+    def get_renting_since(self, obj):
+        """Возвращает дату первого добавленного транспорта арендодателя"""
+        first_vehicle = Vehicle.objects.filter(owner=obj.user).order_by('created_at').first()
+        return first_vehicle.created_at.date() if first_vehicle else None
 
 
 class CurrencySerializer(serializers.ModelSerializer):
