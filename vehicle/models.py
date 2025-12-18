@@ -229,7 +229,7 @@ class Vehicle(PolymorphicModel):
     drivers_rating = models.DecimalField(null=True, blank=True, decimal_places=1, max_digits=2, verbose_name='Рейтинг арендатора')
     drivers_only_verified = models.BooleanField(default=True, verbose_name='Сдавать только верифицированным пользователям')
     price_delivery = models.DecimalField(decimal_places=2, max_digits=10, verbose_name='Стоимость доставки транспорта')
-    price_deposit = models.DecimalField(decimal_places=2, max_digits=10, verbose_name='депозит')
+    price_deposit = models.DecimalField(decimal_places=2, max_digits=15, verbose_name='депозит')
     min_rent_day = models.PositiveIntegerField(default=1, verbose_name='Минимальный срок аренды')
     max_rent_day = models.PositiveIntegerField(default=365, verbose_name='Максимальный срок аренды')
 
