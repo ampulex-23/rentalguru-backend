@@ -98,14 +98,20 @@ class TripViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Получаем информацию о платеже ДО отмены
+        # Получаем информацию о платеже
         request_rent = RequestRent.objects.filter(chat=trip.chat).first()
         payment = None
         payment_info = {}
         
         if request_rent:
-            from payment.models import Payment
             payment = Payment.objects.filter(request_rent=request_rent).first()
+            
+            # После успешной оплаты отмена только через техподдержку
+            if payment and payment.status == 'success':
+                return Response(
+                    {"detail": "Поездка уже оплачена. Для отмены обратитесь в техподдержку."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
             
             if payment:
                 will_refund = payment.status == 'success' and trip.get_time_until_start().total_seconds() / 3600 > 48
