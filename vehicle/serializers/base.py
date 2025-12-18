@@ -222,15 +222,13 @@ class BaseVehicleUpdateSerializer(BaseVehicleSerializer):
 
         if prices_data is not None:
             instance.rent_prices.all().delete()
-            RentPrice.objects.bulk_create([
-                RentPrice(
+            for p in prices_data:
+                RentPrice.objects.create(
                     vehicle=instance,
                     name=p['name'],
                     price=Decimal(str(p['price'])),
                     discount=Decimal(str(p.get('discount', 0)))
                 )
-                for p in prices_data
-            ])
 
         if availabilities_data is not None:
             instance.availabilities.all().delete()
