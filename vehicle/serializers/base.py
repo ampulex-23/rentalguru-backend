@@ -154,6 +154,11 @@ class BaseVehicleUpdateSerializer(BaseVehicleSerializer):
         return internal_value
 
     def update(self, instance, validated_data):
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f'BaseVehicleUpdateSerializer.update called with validated_data keys: {validated_data.keys()}')
+        logger.info(f'validated_data: {validated_data}')
+        
         request = self.context.get('request')
         original_verified = instance.verified
 
@@ -202,13 +207,18 @@ class BaseVehicleUpdateSerializer(BaseVehicleSerializer):
                     availabilities_data = []
 
         if request and request.user.role in ['admin', 'manager']:
+            if not original_verified:
+                from django.utils import timezone
+                instance.verified_at = timezone.now()
             instance.verified = True
         elif should_reset_verified:
             instance.verified = False
+            instance.verified_at = None
         else:
             instance.verified = original_verified
 
         instance = super().update(instance, validated_data)
+        logger.info(f'After super().update - instance.body_type: {getattr(instance, "body_type", None)}, instance.description: {getattr(instance, "description", None)}')
 
         if prices_data is not None:
             instance.rent_prices.all().delete()

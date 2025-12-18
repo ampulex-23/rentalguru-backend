@@ -239,6 +239,7 @@ class Vehicle(PolymorphicModel):
     ratings = models.JSONField(default=default_rating, verbose_name='Рейтинг транспорта')
     average_rating = models.FloatField(default=0, verbose_name='Средний рейтинг')
     verified = models.BooleanField(default=False, verbose_name='Верифицирован')
+    verified_at = models.DateTimeField(null=True, blank=True, verbose_name='Дата верификации')
     last_update = models.DateTimeField(auto_now=True, verbose_name='Последнее обновление')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     payment_method = models.ManyToManyField(PaymentMethod, related_name='vehicles', verbose_name='Способ оплаты')

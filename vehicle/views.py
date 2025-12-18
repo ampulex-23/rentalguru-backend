@@ -202,10 +202,10 @@ class AutoViewSet(BaseViewSet):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         
-        # Для админов/менеджеров: неверифицированные первыми
+        # Для админов/менеджеров: неверифицированные первыми (по created_at desc), затем верифицированные (по verified_at desc)
         if request.user.is_authenticated and request.user.role in ['admin', 'manager']:
-            unverified = queryset.filter(verified=False)
-            verified = queryset.filter(verified=True)
+            unverified = queryset.filter(verified=False).order_by('-created_at')
+            verified = queryset.filter(verified=True).order_by('-verified_at')
             from itertools import chain
             queryset = list(chain(unverified, verified))
             
@@ -270,9 +270,8 @@ class BikeViewSet(BaseViewSet):
                                       'documents', 'rent_prices', 'photos'))
         if user.is_authenticated:
             if user.role in ['admin', 'manager']:
-                # Неверифицированные первыми для админов/менеджеров
-                ordering = self.request.query_params.get('ordering', '-created_at')
-                return queryset.order_by('verified', ordering).distinct()
+                # Сортировка будет в list() методе
+                return queryset.distinct()
             else:
                 is_renter = hasattr(user, 'renter')
                 is_lessor = hasattr(user, 'lessor')
@@ -283,6 +282,25 @@ class BikeViewSet(BaseViewSet):
         else:
             queryset = queryset.filter(verified=True)
         return queryset.distinct()
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        # Для админов/менеджеров: неверифицированные первыми (по created_at desc), затем верифицированные (по verified_at desc)
+        if request.user.is_authenticated and request.user.role in ['admin', 'manager']:
+            unverified = queryset.filter(verified=False).order_by('-created_at')
+            verified = queryset.filter(verified=True).order_by('-verified_at')
+            from itertools import chain
+            queryset = list(chain(unverified, verified))
+            
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
+        
+        return super().list(request, *args, **kwargs)
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -335,9 +353,7 @@ class ShipViewSet(BaseViewSet):
                                       'features_equipment', 'availabilities', 'documents', 'rent_prices', 'photos'))
         if user.is_authenticated:
             if user.role in ['admin', 'manager']:
-                # Неверифицированные первыми для админов/менеджеров
-                ordering = self.request.query_params.get('ordering', '-created_at')
-                return queryset.order_by('verified', ordering).distinct()
+                return queryset.distinct()
             else:
                 is_renter = hasattr(user, 'renter')
                 is_lessor = hasattr(user, 'lessor')
@@ -348,6 +364,24 @@ class ShipViewSet(BaseViewSet):
         else:
             queryset = queryset.filter(verified=True)
         return queryset.distinct()
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        if request.user.is_authenticated and request.user.role in ['admin', 'manager']:
+            unverified = queryset.filter(verified=False).order_by('-created_at')
+            verified = queryset.filter(verified=True).order_by('-verified_at')
+            from itertools import chain
+            queryset = list(chain(unverified, verified))
+            
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
+        
+        return super().list(request, *args, **kwargs)
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -399,9 +433,7 @@ class HelicopterViewSet(BaseViewSet):
                     .prefetch_related('payment_method', 'availabilities', 'documents', 'rent_prices', 'photos'))
         if user.is_authenticated:
             if user.role in ['admin', 'manager']:
-                # Неверифицированные первыми для админов/менеджеров
-                ordering = self.request.query_params.get('ordering', '-created_at')
-                return queryset.order_by('verified', ordering).distinct()
+                return queryset.distinct()
             else:
                 is_renter = hasattr(user, 'renter')
                 is_lessor = hasattr(user, 'lessor')
@@ -412,6 +444,24 @@ class HelicopterViewSet(BaseViewSet):
         else:
             queryset = queryset.filter(verified=True)
         return queryset.distinct()
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        if request.user.is_authenticated and request.user.role in ['admin', 'manager']:
+            unverified = queryset.filter(verified=False).order_by('-created_at')
+            verified = queryset.filter(verified=True).order_by('-verified_at')
+            from itertools import chain
+            queryset = list(chain(unverified, verified))
+            
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
+        
+        return super().list(request, *args, **kwargs)
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -463,9 +513,7 @@ class SpecialTechnicViewSet(BaseViewSet):
                     .prefetch_related('payment_method', 'availabilities', 'documents', 'rent_prices', 'photos'))
         if user.is_authenticated:
             if user.role in ['admin', 'manager']:
-                # Неверифицированные первыми для админов/менеджеров
-                ordering = self.request.query_params.get('ordering', '-created_at')
-                return queryset.order_by('verified', ordering).distinct()
+                return queryset.distinct()
             else:
                 is_renter = hasattr(user, 'renter')
                 is_lessor = hasattr(user, 'lessor')
@@ -476,6 +524,24 @@ class SpecialTechnicViewSet(BaseViewSet):
         else:
             queryset = queryset.filter(verified=True)
         return queryset.distinct()
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        if request.user.is_authenticated and request.user.role in ['admin', 'manager']:
+            unverified = queryset.filter(verified=False).order_by('-created_at')
+            verified = queryset.filter(verified=True).order_by('-verified_at')
+            from itertools import chain
+            queryset = list(chain(unverified, verified))
+            
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
+        
+        return super().list(request, *args, **kwargs)
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
