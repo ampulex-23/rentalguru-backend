@@ -349,9 +349,10 @@ class RequestRent(models.Model):
         )
 
     def calculate_amount(self):
-        """ Расчет стоимости суммы к оплате (комиссия от общей стоимости) """
+        """ Расчет стоимости суммы к оплате (комиссия от стоимости аренды без доставки) """
         commission = self.vehicle.owner.lessor.commission
-        return Decimal(self.total_cost) * commission / Decimal(100)
+        rent_cost = Decimal(self.total_cost) - Decimal(self.delivery_cost or 0)
+        return rent_cost * commission / Decimal(100)
 
     def __str__(self):
         return f'Заявка на аренду №-{self.pk}'
