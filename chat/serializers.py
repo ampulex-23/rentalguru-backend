@@ -91,6 +91,12 @@ class TripSerializer(serializers.ModelSerializer):
             if not payment:
                 raise serializers.ValidationError({"detail": "Платеж не найден."})
 
+            # Арендатор не может отменить оплаченную поездку напрямую
+            if request.user == instance.organizer and payment.status == 'success':
+                raise serializers.ValidationError({
+                    "detail": "Поездка уже оплачена. Для отмены обратитесь в техподдержку."
+                })
+
             if payment.status == 'success' and instance.get_time_until_start().total_seconds() / 3600 > 48:
                 refund = TinkoffAPI()
                 response = refund.cancel_payment(payment.payment_id, payment.amount)
