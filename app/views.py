@@ -26,7 +26,7 @@ from RentalGuru import settings
 from RentalGuru.settings import redis_1
 from chat.models import Trip, RequestRent
 from influencer.models import Influencer, RegistrationSource, ReferralLink, QRCode, PromoCode, UsedPromoCode
-from manager.permissions import ManagerObjectPermission
+from manager.permissions import ManagerObjectPermission, IsAdmin
 from notification.models import Notification, FCMToken
 from vehicle.models import Vehicle
 from .filters import RenterDocumentsFilter, UserFilter
