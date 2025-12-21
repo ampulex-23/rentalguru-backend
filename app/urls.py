@@ -4,7 +4,8 @@ from rest_framework.routers import DefaultRouter
 
 from .views import ChangePasswordView, UserViewSet, RenterDocumentsViewSet, UpdateRatingView, \
     CustomTokenObtainPairView, PasswordResetRequestView, VerifyCodeView, \
-    SetPasswordView, BecomeLessorView, CurrencyListView, LanguageListView, PhoneSendCode, PhoneVerifyCode, \
+    SetPasswordView, BecomeLessorView, CurrencyListView, CurrencyUpdateRatesView, CurrencyConvertView, \
+    LanguageListView, PhoneSendCode, PhoneVerifyCode, \
     TelegramCallbackView, TelegramRegisterView, SendCodeToEmailView, VerifiedEmailView, \
     FavoriteListView, FavoriteListDeleteView, AddVehicleToFavoriteListView, RemoveVehicleFromFavoriteListView, \
     FavoriteListDetailView, FavoriteListAllVehiclesView, OauthCallback, UserCreateView, PasswordChangeView
@@ -26,6 +27,8 @@ urlpatterns = [
     path('password-set/', SetPasswordView.as_view(), name='password-set'),
     path('become_lessor/', BecomeLessorView.as_view(), name='become_lessor'),
     path('currency/', CurrencyListView.as_view(), name='currency'),
+    path('currency/update-rates/', CurrencyUpdateRatesView.as_view(), name='currency_update_rates'),
+    path('currency/convert/', CurrencyConvertView.as_view(), name='currency_convert'),
     path('language/', LanguageListView.as_view(), name='language'),
     path('phone_send_code/', PhoneSendCode.as_view(), name='phone_send_code'),
     path('phone_verify_code/', PhoneVerifyCode.as_view(), name='phone_verify_code'),

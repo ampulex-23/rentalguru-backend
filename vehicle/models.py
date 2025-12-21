@@ -218,6 +218,14 @@ class Vehicle(PolymorphicModel):
     brand = models.ForeignKey(VehicleBrand, on_delete=models.CASCADE, related_name='vehicle', verbose_name='Марка')
     model = models.ForeignKey(VehicleModel, on_delete=models.CASCADE, related_name='vehicle', verbose_name='Модель')
     city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, related_name='vehicle', verbose_name='Город')
+    currency = models.ForeignKey(
+        'app.Currency',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='vehicles',
+        verbose_name='Валюта'
+    )
     vehicle_park = models.ForeignKey(VehiclePark, on_delete=models.SET_NULL, null=True, blank=True,
                                      related_name='vehicles', verbose_name='Автопарк')
 
@@ -269,6 +277,10 @@ class Vehicle(PolymorphicModel):
         avg = self.get_average_rating().get('rating', 0) or 0
         self.average_rating = avg
         # Комиссия на доставку НЕ накручивается - доставка сохраняется как есть
+        
+        # Авто-определение валюты по городу (если не указана вручную)
+        if not self.currency and self.city and self.city.currency:
+            self.currency = self.city.currency
 
         super().save(*args, **kwargs)
         # Отправка уведомления на регистрацию

@@ -19,6 +19,15 @@ class City(models.Model):
     title = models.CharField(max_length=50, unique=True, verbose_name='Город')
     latitude = models.FloatField(null=True, blank=True, verbose_name='Широта')
     longitude = models.FloatField(null=True, blank=True, verbose_name='Долгота')
+    country = models.CharField(max_length=100, null=True, blank=True, verbose_name='Страна')
+    currency = models.ForeignKey(
+        'app.Currency',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cities',
+        verbose_name='Валюта'
+    )
 
     def __str__(self):
         return self.title

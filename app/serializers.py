@@ -202,7 +202,7 @@ class LessorDetailSerializer(serializers.ModelSerializer):
 class CurrencySerializer(serializers.ModelSerializer):
     class Meta:
         model = Currency
-        fields = ['id', 'code', 'title']
+        fields = ['id', 'code', 'title', 'symbol', 'rate_to_rub']
 
 
 class LanguageSerializer(serializers.ModelSerializer):

@@ -18,6 +18,9 @@ def upload_avatar(instance, filename):
 class Currency(models.Model):
     code = models.CharField(max_length=3, unique=True, verbose_name="Код валюты")
     title = models.CharField(max_length=255, null=True, verbose_name='Название')
+    symbol = models.CharField(max_length=5, default='', blank=True, verbose_name='Символ')
+    rate_to_rub = models.DecimalField(max_digits=18, decimal_places=6, default=1, verbose_name='Курс к RUB')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления курса')
 
     def __str__(self):
         return self.code

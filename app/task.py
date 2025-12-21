@@ -30,3 +30,13 @@ def send_sms(phone_number, code):
     api = SmsAero("rentalguru.ru@yandex.ru", "softspace23")
     api.send(phone_number, f"Ваш код подтверждения: {code}")
 
+
+@shared_task
+def update_currency_rates():
+    """
+    Обновление курсов валют.
+    Запускается по расписанию (раз в час).
+    """
+    from app.services.currency_service import CurrencyService
+    return CurrencyService.update_rates()
+

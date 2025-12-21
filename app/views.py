@@ -559,6 +559,51 @@ class CurrencyListView(ListAPIView):
     serializer_class = CurrencySerializer
 
 
+@extend_schema(summary="Обновить курсы валют", description="Обновить курсы валют (только для админов)")
+class CurrencyUpdateRatesView(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+    
+    def post(self, request):
+        from app.services.currency_service import CurrencyService
+        success = CurrencyService.update_rates()
+        if success:
+            return Response({'status': 'success', 'message': 'Currency rates updated'})
+        return Response({'status': 'error', 'message': 'Failed to update rates'}, status=500)
+
+
+@extend_schema(summary="Конвертировать сумму", description="Конвертировать сумму между валютами")
+class CurrencyConvertView(APIView):
+    def get(self, request):
+        amount = request.query_params.get('amount')
+        from_code = request.query_params.get('from')
+        to_code = request.query_params.get('to')
+        
+        if not all([amount, from_code, to_code]):
+            return Response({'error': 'Required params: amount, from, to'}, status=400)
+        
+        try:
+            amount = float(amount)
+        except ValueError:
+            return Response({'error': 'Invalid amount'}, status=400)
+        
+        from_currency = Currency.objects.filter(code=from_code.upper()).first()
+        to_currency = Currency.objects.filter(code=to_code.upper()).first()
+        
+        if not from_currency or not to_currency:
+            return Response({'error': 'Currency not found'}, status=404)
+        
+        from app.services.currency_service import CurrencyService
+        result = CurrencyService.convert(amount, from_currency, to_currency)
+        
+        return Response({
+            'amount': amount,
+            'from': from_code.upper(),
+            'to': to_code.upper(),
+            'result': str(result),
+            'rate': str(from_currency.rate_to_rub / to_currency.rate_to_rub) if to_currency.rate_to_rub else None
+        })
+
+
 @extend_schema(summary="Список языков", description="Список языков")
 class LanguageListView(ListAPIView):
     queryset = Language.objects.all()

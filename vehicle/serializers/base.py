@@ -70,15 +70,58 @@ class VehiclePhotoSerializer(serializers.ModelSerializer):
 
 
 class RentPriceSerializer(serializers.ModelSerializer):
+    price_converted = serializers.SerializerMethodField()
+    total_converted = serializers.SerializerMethodField()
+    
     class Meta:
         model = RentPrice
-        fields = ['name', 'price', 'discount', 'total']
-        read_only_fields = ['total']
+        fields = ['name', 'price', 'discount', 'total', 'price_converted', 'total_converted']
+        read_only_fields = ['total', 'price_converted', 'total_converted']
 
     def validate_discount(self, value):
         if value < 0 or value > 90:
             raise serializers.ValidationError('Скидка должна быть в диапазоне от 0 до 90.')
         return value
+    
+    def _get_target_currency(self):
+        """Получить целевую валюту для конвертации из контекста."""
+        request = self.context.get('request')
+        if not request:
+            return None
+        
+        # Проверяем query param ?currency=USD
+        currency_code = request.query_params.get('currency')
+        if currency_code:
+            from app.models import Currency
+            return Currency.objects.filter(code=currency_code.upper()).first()
+        
+        # Иначе используем валюту пользователя
+        if request.user.is_authenticated and request.user.currency:
+            return request.user.currency
+        
+        return None
+    
+    def get_price_converted(self, obj):
+        """Цена в валюте пользователя."""
+        target_currency = self._get_target_currency()
+        if not target_currency or not obj.vehicle.currency:
+            return None
+        if target_currency.code == obj.vehicle.currency.code:
+            return None
+        
+        from app.services.currency_service import CurrencyService
+        return str(CurrencyService.convert(obj.price, obj.vehicle.currency, target_currency))
+    
+    def get_total_converted(self, obj):
+        """Итого в валюте пользователя."""
+        target_currency = self._get_target_currency()
+        if not target_currency or not obj.vehicle.currency:
+            return None
+        if target_currency.code == obj.vehicle.currency.code:
+            return None
+        
+        from app.services.currency_service import CurrencyService
+        return str(CurrencyService.convert(obj.total, obj.vehicle.currency, target_currency))
 
 
 class VehicleBrandSerializer(serializers.ModelSerializer):
@@ -175,7 +218,8 @@ class BaseVehicleUpdateSerializer(BaseVehicleSerializer):
             'rent_prices',
             'availabilities',
             'price_deposit',
-            'drivers_only_verified'
+            'drivers_only_verified',
+            'currency'
         }
 
         should_reset_verified = False
@@ -400,13 +444,15 @@ class BaseVehicleListSerializer(serializers.ModelSerializer):
     city = serializers.StringRelatedField()
     average_rating = serializers.FloatField(read_only=True)
     lessor = serializers.SerializerMethodField()
+    currency = serializers.SerializerMethodField()
+    user_currency = serializers.SerializerMethodField()
 
 
     class Meta:
         fields = [
             'id', 'brand', 'model', 'average_rating', 'rent_prices', 'availabilities', 'is_super_host',
             'photos', 'vehicle_type', 'free_delivery', 'free_deposit', 'latitude', 'longitude', 'city', 'verified',
-            'lessor']
+            'lessor', 'currency', 'user_currency']
 
     def get_city(self, obj):
         return obj.city.title if obj.city else None
@@ -456,6 +502,49 @@ class BaseVehicleListSerializer(serializers.ModelSerializer):
             "telephone": owner.telephone if owner.telephone else None,
             "avatar": owner.avatar.url if getattr(owner, "avatar", None) and owner.avatar.name else None
         }
+    
+    @extend_schema_field(serializers.DictField())
+    def get_currency(self, obj):
+        """Валюта транспорта."""
+        if not obj.currency:
+            return None
+        return {
+            "id": obj.currency.id,
+            "code": obj.currency.code,
+            "symbol": obj.currency.symbol,
+            "title": obj.currency.title
+        }
+    
+    @extend_schema_field(serializers.DictField())
+    def get_user_currency(self, obj):
+        """Валюта пользователя (для конвертации)."""
+        request = self.context.get('request')
+        if not request:
+            return None
+        
+        # Проверяем query param ?currency=USD
+        currency_code = request.query_params.get('currency')
+        if currency_code:
+            from app.models import Currency
+            currency = Currency.objects.filter(code=currency_code.upper()).first()
+            if currency:
+                return {
+                    "id": currency.id,
+                    "code": currency.code,
+                    "symbol": currency.symbol,
+                    "title": currency.title
+                }
+        
+        # Иначе используем валюту пользователя
+        if request.user.is_authenticated and request.user.currency:
+            return {
+                "id": request.user.currency.id,
+                "code": request.user.currency.code,
+                "symbol": request.user.currency.symbol,
+                "title": request.user.currency.title
+            }
+        
+        return None
 
 
 class VehicleClassSerializer(serializers.ModelSerializer):
@@ -464,14 +553,30 @@ class VehicleClassSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class VehicleCurrencySerializer(serializers.Serializer):
+    """Сериализатор для валюты транспорта."""
+    id = serializers.IntegerField()
+    code = serializers.CharField()
+    symbol = serializers.CharField()
+    title = serializers.CharField()
+
+
 class VehicleSerializer(serializers.ModelSerializer):
     brand_name = serializers.CharField(source='brand.name', read_only=True)
     model_name = serializers.CharField(source='model.name', read_only=True)
     vehicle_type = serializers.CharField(source='get_vehicle_type_display', read_only=True)
+    currency = VehicleCurrencySerializer(read_only=True)
+    currency_id = serializers.PrimaryKeyRelatedField(
+        queryset=Vehicle._meta.get_field('currency').related_model.objects.all(),
+        source='currency',
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
 
     class Meta:
         model = Vehicle
-        fields = ['id', 'brand_name', 'model_name', 'vehicle_type']
+        fields = ['id', 'brand_name', 'model_name', 'vehicle_type', 'currency', 'currency_id']
 
 
 class UpdatePhotoOrderSerializer(serializers.Serializer):
