@@ -6,9 +6,11 @@ from .models import Franchise, VehiclePark, RequestFranchise, Category, City
 
 
 class CityAdmin(admin.ModelAdmin):
-    list_display = ('title',)
-    search_fields = ('title',)
+    list_display = ('title', 'country', 'currency')
+    list_filter = ('country', 'currency')
+    search_fields = ('title', 'country')
     ordering = ('title',)
+    autocomplete_fields = ['currency']
 
 
 # class CategoryAdmin(admin.ModelAdmin):

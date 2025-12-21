@@ -184,7 +184,9 @@ class RenterDocumentsAdmin(admin.ModelAdmin):
 
 @admin.register(Currency)
 class CurrencyAdmin(admin.ModelAdmin):
-    list_display = ['code', 'title']
+    list_display = ['code', 'title', 'symbol', 'rate_to_rub']
+    search_fields = ['code', 'title']
+    ordering = ['code']
 
 
 admin.site.register(Lessor, LessorAdmin)
