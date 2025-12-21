@@ -106,12 +106,43 @@ class TripViewSet(viewsets.ModelViewSet):
         if request_rent:
             payment = Payment.objects.filter(request_rent=request_rent).first()
             
-            # После успешной оплаты отмена только через техподдержку
+            # После успешной оплаты — создаём обращение в поддержку, но НЕ отменяем поездку
             if payment and payment.status == 'success':
-                return Response(
-                    {"detail": "Поездка уже оплачена. Для отмены обратитесь в техподдержку."},
-                    status=status.HTTP_403_FORBIDDEN
+                # Создаём обращение в техподдержку
+                chat_support, _ = ChatSupport.objects.get_or_create(creator=request.user)
+                topic, _ = TopicSupport.objects.get_or_create(name="Отмена поездки")
+                topic.count += 1
+                topic.save()
+                
+                # Формируем сообщение
+                message_text = f"🚫 Запрос на отмену поездки #{trip.id}\n\n"
+                message_text += f"Транспорт: {trip.vehicle}\n"
+                message_text += f"Период: {trip.start_date} — {trip.end_date}\n"
+                message_text += f"Стоимость аренды: {trip.total_cost} руб.\n\n"
+                message_text += f"💳 Информация о платеже:\n"
+                message_text += f"• Комиссия платформы: {payment.amount} руб.\n"
+                if payment.deposite > 0:
+                    message_text += f"• Депозит: {payment.deposite} руб.\n"
+                if payment.delivery > 0:
+                    message_text += f"• Доставка: {payment.delivery} руб.\n"
+                message_text += "\n⚠️ Поездка оплачена. Требуется решение менеджера."
+                
+                MessageSupport.objects.create(
+                    chat=chat_support,
+                    sender=request.user,
+                    content=message_text
                 )
+                
+                IssueSupport.objects.create(
+                    chat=chat_support,
+                    topic=topic,
+                    description=f"Запрос на отмену оплаченной поездки #{trip.id} с транспортом {trip.vehicle}"
+                )
+                
+                return Response({
+                    "detail": "Заявка на отмену поездки создана. Менеджер свяжется с вами в ближайшее время.",
+                    "support_chat_id": chat_support.id
+                }, status=status.HTTP_200_OK)
             
             if payment:
                 will_refund = payment.status == 'success' and trip.get_time_until_start().total_seconds() / 3600 > 48
@@ -581,6 +612,21 @@ class RequestRentViewSet(viewsets.ModelViewSet):
                 denied_reason = self.request.data.get('denied_reason')
                 if not denied_reason:
                     raise DRFValidationError("Причина отказа обязательна, если статус заявки — 'denied'.")
+                
+                # Отменяем связанный Trip (если есть)
+                chat = Chat.objects.filter(request_rent=instance).first()
+                if chat:
+                    trip = Trip.objects.filter(chat=chat).first()
+                    if trip and trip.status not in ['canceled', 'finished']:
+                        trip.status = 'canceled'
+                        trip.save()
+                
+                # Отменяем связанный Payment (если есть)
+                payment = Payment.objects.filter(request_rent=instance).first()
+                if payment and payment.status not in ['canceled', 'success']:
+                    payment.status = 'canceled'
+                    payment.save()
+                
                 content = f'Вам отказано в аренде транспорта {instance.vehicle} по причине: {denied_reason}'
                 url = ''
                 Notification.objects.create(user=instance.organizer, content=content, url=url)

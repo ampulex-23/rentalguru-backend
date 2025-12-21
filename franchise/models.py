@@ -54,7 +54,7 @@ class Franchise(models.Model):
     director = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name='Директор', related_name='franchise')
     commission = models.PositiveIntegerField(default=3, verbose_name='Комиссия')
     total_vehicles = models.PositiveIntegerField(default=0, verbose_name='Общее количество транспортных средств')
-    categories = models.ManyToManyField(Category, related_name='franchises', verbose_name='Категории')
+    categories = models.ManyToManyField(Category, related_name='franchises', verbose_name='Категории', blank=True)
 
     email_1 = models.EmailField(max_length=50, null=True, blank=True, verbose_name='Почта №1')
     email_2 = models.EmailField(max_length=100, null=True, blank=True, verbose_name='Почта №2')

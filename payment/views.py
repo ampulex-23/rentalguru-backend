@@ -73,25 +73,40 @@ class PaymentViewSet(viewsets.ViewSet):
                 payment.url = None
                 payment.status = 'pending'
 
+            # Общая сумма = комиссия + доставка (без комиссии на доставку)
+            total_amount = payment.amount + (payment.delivery or 0)
+            
+            receipt_items = [
+                {
+                    "Name": f"Комиссия платформы за аренду {payment.request_rent.vehicle}",
+                    "Price": int(payment.amount * 100),
+                    "Quantity": 1,
+                    "Amount": int(payment.amount * 100),
+                    "Tax": "vat20"
+                }
+            ]
+            
+            # Добавляем доставку как отдельную позицию в чеке
+            if payment.delivery and payment.delivery > 0:
+                receipt_items.append({
+                    "Name": "Доставка транспорта",
+                    "Price": int(payment.delivery * 100),
+                    "Quantity": 1,
+                    "Amount": int(payment.delivery * 100),
+                    "Tax": "vat20"
+                })
+            
             receipt = {
                 "Email": request.user.email,
                 "Phone": request.user.telephone if hasattr(request.user, 'telephone') else None,
                 "Taxation": "osn",
-                "Items": [
-                    {
-                        "Name": f"Аренда транспорта {payment.request_rent.vehicle}",
-                        "Price": int(payment.amount * 100),
-                        "Quantity": 1,
-                        "Amount": int(payment.amount * 100),
-                        "Tax": "vat20"
-                    }
-                ]
+                "Items": receipt_items
             }
             order_id = f"{payment.id}_{int(time.time())}"
 
             response = tinkoff.create_payment(
                 order_id=order_id,
-                amount=int(payment.amount * 100),
+                amount=int(total_amount * 100),
                 description=f'Аренда транспорта {payment.request_rent.vehicle} (заявка #{payment.request_rent.id})',
                 receipt=receipt,
                 lang=payment.request_rent.organizer.language.code

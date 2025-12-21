@@ -268,15 +268,7 @@ class Vehicle(PolymorphicModel):
         # Обновление рейтинга
         avg = self.get_average_rating().get('rating', 0) or 0
         self.average_rating = avg
-        # Комиссия на доставку
-        if self.price_delivery > 0:
-            if previous_instance:
-                if self.price_delivery != previous_instance.price_delivery:
-                    commission = self.owner.lessor.commission
-                    self.price_delivery *= Decimal(1) + Decimal(commission) / Decimal(100)
-            else:
-                commission = self.owner.lessor.commission
-                self.price_delivery *= Decimal(1) + Decimal(commission) / Decimal(100)
+        # Комиссия на доставку НЕ накручивается - доставка сохраняется как есть
 
         super().save(*args, **kwargs)
         # Отправка уведомления на регистрацию

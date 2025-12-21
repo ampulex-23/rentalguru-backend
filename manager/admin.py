@@ -20,6 +20,12 @@ class ManagerAdmin(admin.ModelAdmin):
     list_filter = ('cities', 'access_types')
     filter_horizontal = ('cities', 'access_types')
 
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'user':
+            from app.models import User
+            kwargs['queryset'] = User.objects.filter(role='manager')
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
     def get_cities(self, obj):
         """Отображение списка городов менеджера"""
         cities = obj.cities.all()

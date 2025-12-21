@@ -16,7 +16,7 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 import json
 
 from RentalGuru.settings import HOST_URL
-from chat.models import MessageSupport, ChatSupport, Message, Chat, IssueSupport
+from chat.models import MessageSupport, ChatSupport, Message, Chat, IssueSupport, Trip
 from manager.permissions import WebSocketPermissionChecker
 from notification.models import Notification, send_push_notification
 from .tasks import translate_message
@@ -771,10 +771,17 @@ class ChatConsumer(BaseChatConsumer):
             return False
 
         if new_status == 'accept':
+            logger.info(f"handle_request_rent_status_update: accept for request_rent {request_rent.id}")
             if not await self.check_request_rent_fields(request_rent):
+                logger.warning(f"handle_request_rent_status_update: check_request_rent_fields failed for {request_rent.id}")
                 return False
             vehicle_owner = await database_sync_to_async(lambda: request_rent.vehicle.owner)()
             await self.create_notification(vehicle_owner, "Статус заявки обновлён на: Принято")
+            
+            # Создаём Trip для заявки "по запросу" при принятии арендатором
+            logger.info(f"handle_request_rent_status_update: creating trip for request_rent {request_rent.id}")
+            await self.create_trip_for_request(chat, request_rent)
+            logger.info(f"handle_request_rent_status_update: trip created for request_rent {request_rent.id}")
 
         request_rent.status = new_status
         await database_sync_to_async(request_rent.save)()
@@ -802,6 +809,26 @@ class ChatConsumer(BaseChatConsumer):
             request_rent.end_date is not None,
             request_rent.total_cost > 0
         ])
+
+    @database_sync_to_async
+    def create_trip_for_request(self, chat, request_rent):
+        """Создаёт Trip для заявки 'по запросу' при принятии арендатором."""
+        existing_trip = Trip.objects.filter(chat=chat).first()
+        if existing_trip:
+            return existing_trip
+        
+        return Trip.objects.create(
+            organizer=request_rent.organizer,
+            content_type=request_rent.content_type,
+            object_id=request_rent.object_id,
+            start_date=request_rent.start_date,
+            end_date=request_rent.end_date,
+            start_time=request_rent.start_time,
+            end_time=request_rent.end_time,
+            total_cost=request_rent.total_cost,
+            chat=chat,
+            status='started'
+        )
 
     async def send_status_update_message(self, chat, message_content):
         """Создает и отправляет сообщение в чат о статусе заявки."""
