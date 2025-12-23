@@ -16,7 +16,8 @@ class RequestRent(models.Model):
         ('accept', 'Принять'),
         ('denied', 'Отказать'),
         ('unknown', 'Не рассмотрено'),
-        ('paid', 'Оплачено')
+        ('paid', 'Оплачено'),
+        ('canceled', 'Отменено')
     )
     status = models.CharField(max_length=8, default='unknown', choices=STATUS_CHOICES, verbose_name='Статус')
     denied_reason = models.TextField(null=True, blank=True, verbose_name='Причина отказа', max_length=300)

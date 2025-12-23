@@ -135,6 +135,10 @@ class TripSerializer(serializers.ModelSerializer):
                     used_promo.used = False
                     used_promo.save()
 
+            # Обновляем статус заявки на аренду
+            request_rent.status = 'canceled'
+            request_rent.save(update_fields=['status'])
+
             # Возврат дат доступности
             if not request_rent.on_request:
                 vehicle = instance.vehicle
