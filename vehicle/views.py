@@ -922,11 +922,20 @@ class AllVehiclesListView(ListAPIView):
             base_qs = base_qs.order_by(ordering)
             all_vehicles.extend(list(base_qs))
 
-        # Для админов и менеджеров: неверифицированные первыми
+        # Для админов и менеджеров: неверифицированные первыми, внутри по дате
         if user.is_authenticated and user.role in ['admin', 'manager']:
-            # Сортируем: сначала неверифицированные (verified=False), потом верифицированные
-            unverified = [v for v in all_vehicles if not v.verified]
-            verified = [v for v in all_vehicles if v.verified]
+            # Неверифицированные: по дате создания (новые первыми)
+            unverified = sorted(
+                [v for v in all_vehicles if not v.verified],
+                key=lambda v: v.created_at,
+                reverse=True
+            )
+            # Верифицированные: по дате верификации (недавно верифицированные первыми)
+            verified = sorted(
+                [v for v in all_vehicles if v.verified],
+                key=lambda v: v.verified_at or v.created_at,
+                reverse=True
+            )
             return unverified + verified
         
         return all_vehicles
