@@ -114,7 +114,7 @@ class TripViewSet(viewsets.ModelViewSet):
                 topic.count += 1
                 topic.save()
                 
-                # Формируем сообщение
+                # Формируем сообщение для техподдержки
                 message_text = f"🚫 Запрос на отмену поездки #{trip.id}\n\n"
                 message_text += f"Транспорт: {trip.vehicle}\n"
                 message_text += f"Период: {trip.start_date} — {trip.end_date}\n"
@@ -137,6 +137,19 @@ class TripViewSet(viewsets.ModelViewSet):
                     chat=chat_support,
                     topic=topic,
                     description=f"Запрос на отмену оплаченной поездки #{trip.id} с транспортом {trip.vehicle}"
+                )
+                
+                # Отправляем сообщение арендодателю в чат аренды
+                lessor_message = f"🚫 Арендатор запросил отмену поездки\n\n"
+                lessor_message += f"Транспорт: {trip.vehicle}\n"
+                lessor_message += f"Период: {trip.start_date} — {trip.end_date}\n"
+                lessor_message += f"Стоимость аренды: {trip.total_cost} руб.\n\n"
+                lessor_message += "Запрос передан менеджеру для рассмотрения."
+                
+                Message.objects.create(
+                    chat=trip.chat,
+                    sender=request.user,
+                    content=lessor_message
                 )
                 
                 return Response({
