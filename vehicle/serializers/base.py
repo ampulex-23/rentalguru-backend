@@ -1,7 +1,7 @@
 import json
 from decimal import Decimal
 
-from django.db.models import Max
+from django.db.models import Max, F
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
@@ -63,9 +63,10 @@ class VehicleDocumentSerializer(serializers.ModelSerializer):
 class VehiclePhotoSerializer(serializers.ModelSerializer):
     class Meta:
         model = VehiclePhoto
-        fields = ['photo']
+        fields = ['photo', 'order']
         extra_kwargs = {
-            'vehicle': {'required': False}
+            'vehicle': {'required': False},
+            'order': {'required': False}
         }
 
 
@@ -285,8 +286,16 @@ class BaseVehicleUpdateSerializer(BaseVehicleSerializer):
             existing_max_order = VehiclePhoto.objects.filter(vehicle=instance).aggregate(Max('order'))['order__max'] or 0
             new_photos = []
             for i, photo_data in enumerate(photos_data):
-                if 'order' not in photo_data or photo_data['order'] is None:
+                requested_order = photo_data.get('order')
+                if requested_order is None:
+                    # Если order не указан — добавляем в конец
                     photo_data['order'] = existing_max_order + i + 1
+                else:
+                    # Если order указан — сдвигаем существующие фото
+                    VehiclePhoto.objects.filter(
+                        vehicle=instance,
+                        order__gte=requested_order
+                    ).update(order=F('order') + 1)
                 new_photos.append(VehiclePhoto(vehicle=instance, **photo_data))
             VehiclePhoto.objects.bulk_create(new_photos)
 
