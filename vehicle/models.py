@@ -278,9 +278,9 @@ class Vehicle(PolymorphicModel):
         self.average_rating = avg
         # Комиссия на доставку НЕ накручивается - доставка сохраняется как есть
         
-        # Авто-подстановка валюты из города только при создании (если не указана)
-        if not self.pk and not self.currency and self.city and self.city.currency:
-            self.currency = self.city.currency
+        # Валюта выбирается вручную, по умолчанию берётся из профиля владельца
+        if not self.pk and not self.currency and self.owner and self.owner.currency:
+            self.currency = self.owner.currency
 
         super().save(*args, **kwargs)
         # Отправка уведомления на регистрацию
