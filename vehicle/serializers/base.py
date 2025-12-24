@@ -220,7 +220,7 @@ class BaseVehicleUpdateSerializer(BaseVehicleSerializer):
             'availabilities',
             'price_deposit',
             'drivers_only_verified',
-            'currency'
+            # currency убран - валюта всегда берётся из города автоматически
         }
 
         should_reset_verified = False
@@ -575,17 +575,11 @@ class VehicleSerializer(serializers.ModelSerializer):
     model_name = serializers.CharField(source='model.name', read_only=True)
     vehicle_type = serializers.CharField(source='get_vehicle_type_display', read_only=True)
     currency = VehicleCurrencySerializer(read_only=True)
-    currency_id = serializers.PrimaryKeyRelatedField(
-        queryset=Vehicle._meta.get_field('currency').related_model.objects.all(),
-        source='currency',
-        write_only=True,
-        required=False,
-        allow_null=True
-    )
+    # currency_id убран - валюта всегда берётся из города автоматически
 
     class Meta:
         model = Vehicle
-        fields = ['id', 'brand_name', 'model_name', 'vehicle_type', 'currency', 'currency_id']
+        fields = ['id', 'brand_name', 'model_name', 'vehicle_type', 'currency']
 
 
 class UpdatePhotoOrderSerializer(serializers.Serializer):

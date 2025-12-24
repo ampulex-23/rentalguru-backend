@@ -278,8 +278,8 @@ class Vehicle(PolymorphicModel):
         self.average_rating = avg
         # Комиссия на доставку НЕ накручивается - доставка сохраняется как есть
         
-        # Авто-определение валюты по городу (если не указана вручную)
-        if not self.currency and self.city and self.city.currency:
+        # Валюта ВСЕГДА берётся из города (нельзя выбрать вручную)
+        if self.city and self.city.currency:
             self.currency = self.city.currency
 
         super().save(*args, **kwargs)
