@@ -950,7 +950,7 @@ class AllVehiclesListView(ListAPIView):
         for obj in page:
             for model_cls, serializer_cls in VEHICLE_MODELS.values():
                 if isinstance(obj, model_cls):
-                    serialized_data.append(serializer_cls(obj).data)
+                    serialized_data.append(serializer_cls(obj, context={'request': request}).data)
                     break
 
         response = paginator.get_paginated_response(serialized_data)
