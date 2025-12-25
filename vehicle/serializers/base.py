@@ -443,7 +443,7 @@ class BaseVehicleGetSerializer(serializers.ModelSerializer):
 class BaseVehicleListSerializer(serializers.ModelSerializer):
     availabilities = AvailabilitySerializer(many=True)
     photos = serializers.SerializerMethodField()
-    rent_prices = RentPriceSerializer(many=True)
+    rent_prices = serializers.SerializerMethodField()
     brand = VehicleBrandSerializer(read_only=True)
     model = VehicleModelGetSerializer(read_only=True)
     vehicle_type = serializers.SerializerMethodField()
@@ -456,6 +456,9 @@ class BaseVehicleListSerializer(serializers.ModelSerializer):
     currency = serializers.SerializerMethodField()
     user_currency = serializers.SerializerMethodField()
 
+    def get_rent_prices(self, obj):
+        """Передаём контекст во вложенный сериализатор для конвертации валют."""
+        return RentPriceSerializer(obj.rent_prices.all(), many=True, context=self.context).data
 
     class Meta:
         fields = [
