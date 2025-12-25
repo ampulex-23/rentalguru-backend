@@ -328,9 +328,9 @@ class RentPrice(models.Model):
     )
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='rent_prices')
     name = models.CharField(choices=RENT_PERIOD, max_length=5, verbose_name='Период')
-    price = models.DecimalField(decimal_places=2, max_digits=10, verbose_name='Стоимость')
+    price = models.DecimalField(decimal_places=2, max_digits=15, verbose_name='Стоимость')
     discount = models.PositiveIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(90)], verbose_name='Скидка')
-    total = models.DecimalField(decimal_places=2, max_digits=10, verbose_name='ИТОГО', editable=False)
+    total = models.DecimalField(decimal_places=2, max_digits=15, verbose_name='ИТОГО', editable=False)
 
     objects = RentPriceManager()
 
