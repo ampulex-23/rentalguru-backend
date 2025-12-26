@@ -792,6 +792,19 @@ class VehicleClassListView(ListAPIView):
     serializer_class = VehicleClassSerializer
 
 
+@extend_schema(summary="Список страховок", description="Список доступных типов страховок для транспорта")
+class InsuranceListView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        insurances = [
+            {"value": "kasko", "label": "КАСКО"},
+            {"value": "super_kasko", "label": "СуперКАСКО"},
+            {"value": "osago", "label": "ОСАГО"},
+        ]
+        return Response(insurances)
+
+
 VEHICLE_MODELS = {
     'auto': (Auto, AutoListSerializer),
     'bike': (Bike, BikeListSerializer),
