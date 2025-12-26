@@ -291,6 +291,7 @@ class RequestRent(models.Model):
     def create_payment(self):
         """Создание платежа через Тиньков API"""
         from payment.models import Payment
+        from app.services.currency_service import CurrencyService
 
         # Рассчитываем комиссию (сумму к оплате)
         commission_amount = self.calculate_amount()
@@ -338,12 +339,28 @@ class RequestRent(models.Model):
 
         influencer = getattr(self.organizer.renter, 'influencer', None)
 
+        # Получаем валюту транспорта и конвертируем в рубли
+        vehicle_currency = self.vehicle.currency
+        exchange_rate = None
+        amount_rub = final_amount
+        delivery_rub = self.delivery_cost
+
+        if vehicle_currency and vehicle_currency.code != 'RUB':
+            exchange_rate = vehicle_currency.rate_to_rub
+            amount_rub = CurrencyService.convert_to_rub(final_amount, vehicle_currency)
+            if self.delivery_cost:
+                delivery_rub = CurrencyService.convert_to_rub(self.delivery_cost, vehicle_currency)
+
         # Создание записи о платеже
         Payment.objects.create(
             request_rent=self,
             amount=final_amount,
+            amount_rub=amount_rub,
+            currency=vehicle_currency,
+            exchange_rate=exchange_rate,
             deposite=self.deposit_cost,
             delivery=self.delivery_cost,
+            delivery_rub=delivery_rub,
             promo_code=self.promocode,
             discount_amount=discount_amount,
             influencer=influencer

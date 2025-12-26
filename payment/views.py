@@ -73,26 +73,28 @@ class PaymentViewSet(viewsets.ViewSet):
                 payment.url = None
                 payment.status = 'pending'
 
-            # Общая сумма = комиссия + доставка (без комиссии на доставку)
-            total_amount = payment.amount + (payment.delivery or 0)
+            # Используем суммы в рублях для Tinkoff (платёжка работает только в RUB)
+            amount_for_payment = payment.amount_rub if payment.amount_rub else payment.amount
+            delivery_for_payment = payment.delivery_rub if payment.delivery_rub else (payment.delivery or 0)
+            total_amount = amount_for_payment + delivery_for_payment
             
             receipt_items = [
                 {
                     "Name": f"Комиссия платформы за аренду {payment.request_rent.vehicle}",
-                    "Price": int(payment.amount * 100),
+                    "Price": int(amount_for_payment * 100),
                     "Quantity": 1,
-                    "Amount": int(payment.amount * 100),
+                    "Amount": int(amount_for_payment * 100),
                     "Tax": "vat20"
                 }
             ]
             
             # Добавляем доставку как отдельную позицию в чеке
-            if payment.delivery and payment.delivery > 0:
+            if delivery_for_payment and delivery_for_payment > 0:
                 receipt_items.append({
                     "Name": "Доставка транспорта",
-                    "Price": int(payment.delivery * 100),
+                    "Price": int(delivery_for_payment * 100),
                     "Quantity": 1,
-                    "Amount": int(payment.delivery * 100),
+                    "Amount": int(delivery_for_payment * 100),
                     "Tax": "vat20"
                 })
             
