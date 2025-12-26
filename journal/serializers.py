@@ -72,3 +72,16 @@ class TripSerializer(serializers.ModelSerializer):
         if vehicle and vehicle.owner and vehicle.owner.avatar:
             return vehicle.owner.avatar.url
         return None
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        vehicle = Vehicle.objects.filter(id=instance.object_id).first()
+        if vehicle and vehicle.currency:
+            representation['currency'] = {
+                'id': vehicle.currency.id,
+                'code': vehicle.currency.code,
+                'symbol': vehicle.currency.symbol
+            }
+        else:
+            representation['currency'] = None
+        return representation
