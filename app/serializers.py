@@ -228,7 +228,10 @@ class UserDetailSerializer(serializers.ModelSerializer):
     renter = RenterDetailSerializer(read_only=True)
     lessor = LessorDetailSerializer(read_only=True)
     influencer = InfluencerSerializers(read_only=True)
-    currency = serializers.SlugRelatedField(slug_field='code', queryset=Currency.objects.all())
+    currency = CurrencySerializer(read_only=True)
+    currency_id = serializers.PrimaryKeyRelatedField(
+        queryset=Currency.objects.all(), source='currency', write_only=True, required=False
+    )
     language = serializers.SlugRelatedField(slug_field='code', queryset=Language.objects.all())
 
     class Meta:
@@ -252,6 +255,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             'influencer',
             'manager',
             'currency',
+            'currency_id',
             'language',
             'date_joined'
 

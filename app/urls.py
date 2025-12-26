@@ -27,6 +27,7 @@ urlpatterns = [
     path('password-set/', SetPasswordView.as_view(), name='password-set'),
     path('become_lessor/', BecomeLessorView.as_view(), name='become_lessor'),
     path('currency/', CurrencyListView.as_view(), name='currency'),
+    path('currencies/', CurrencyListView.as_view(), name='currencies'),
     path('currency/update-rates/', CurrencyUpdateRatesView.as_view(), name='currency_update_rates'),
     path('currency/convert/', CurrencyConvertView.as_view(), name='currency_convert'),
     path('language/', LanguageListView.as_view(), name='language'),
