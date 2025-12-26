@@ -14,6 +14,7 @@ from django.utils.timezone import now
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import status, viewsets, serializers, generics
+from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404, ListAPIView, CreateAPIView
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -295,6 +296,23 @@ class UserViewSet(viewsets.ModelViewSet):
 
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(summary='Получить/обновить текущего пользователя')
+    @action(detail=False, methods=['get', 'patch'], permission_classes=[IsAuthenticated])
+    def me(self, request):
+        """
+        GET: Получить профиль текущего пользователя
+        PATCH: Обновить профиль текущего пользователя (включая валюту)
+        """
+        user = request.user
+        if request.method == 'GET':
+            serializer = UserDetailSerializer(user)
+            return Response(serializer.data)
+        elif request.method == 'PATCH':
+            serializer = UserDetailSerializer(user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
 
 @extend_schema(summary="Документы арендатора", description="title принимает passport или "
                                                            "license(Водительское уд.). Для license обязательно "
