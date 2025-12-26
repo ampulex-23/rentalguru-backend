@@ -696,7 +696,7 @@ class ChatConsumer(BaseChatConsumer):
 
         fields_to_update = ['start_time', 'end_time', 'start_date', 'end_date', 'total_cost']
         for field in fields_to_update:
-            if field in update_data:
+            if field in update_data and update_data[field] is not None:
                 setattr(request_rent, field, update_data[field])
 
         if 'content_type' in update_data:
