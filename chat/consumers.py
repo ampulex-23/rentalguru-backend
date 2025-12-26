@@ -714,6 +714,7 @@ class ChatConsumer(BaseChatConsumer):
         content_type_model = request_rent.content_type.model if request_rent.content_type else "unknown"
 
         amount = 0
+        currency_data = None
         try:
             content_type = request_rent.content_type
             vehicle_model = content_type.model_class()
@@ -726,6 +727,14 @@ class ChatConsumer(BaseChatConsumer):
 
                 amount = Decimal(request_rent.total_cost) / Decimal(100) * Decimal(commission_rate)
                 amount = round(float(amount), 2)
+
+            # Добавляем валюту транспорта
+            if vehicle.currency:
+                currency_data = {
+                    'id': vehicle.currency.id,
+                    'code': vehicle.currency.code,
+                    'symbol': vehicle.currency.symbol
+                }
         except Exception as e:
             logger.error(f"Error calculating commission: {str(e)}")
 
@@ -738,7 +747,8 @@ class ChatConsumer(BaseChatConsumer):
             "status": request_rent.status,
             "vehicle_type": content_type_model,
             "vehicle_id": request_rent.object_id,
-            "amount": amount
+            "amount": amount,
+            "currency": currency_data
         }
 
     @database_sync_to_async

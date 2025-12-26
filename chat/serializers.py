@@ -61,6 +61,18 @@ class TripSerializer(serializers.ModelSerializer):
         payment = Payment.objects.filter(request_rent=request_rent).first()
         representation['payment_id'] = payment.id if payment else None
         representation['amount'] = payment.amount if payment else None
+
+        # Добавляем валюту транспорта для конвертации на фронте
+        vehicle = instance.vehicle
+        if vehicle and vehicle.currency:
+            representation['currency'] = {
+                'id': vehicle.currency.id,
+                'code': vehicle.currency.code,
+                'symbol': vehicle.currency.symbol
+            }
+        else:
+            representation['currency'] = None
+
         return representation
 
     def _process_influencer_payment(self, influencer, request_rent):
@@ -354,6 +366,17 @@ class RequestRentSerializer(serializers.ModelSerializer):
                     representation['payment_id'] = payment.id if payment else None
                 except:
                     representation['payment_id'] = None
+
+        # Добавляем валюту транспорта для конвертации на фронте
+        vehicle = instance.vehicle
+        if vehicle and vehicle.currency:
+            representation['currency'] = {
+                'id': vehicle.currency.id,
+                'code': vehicle.currency.code,
+                'symbol': vehicle.currency.symbol
+            }
+        else:
+            representation['currency'] = None
 
         return representation
 
