@@ -7,7 +7,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from RentalGuru.settings import HOST_URL
-from app.models import Lessor
+from app.models import Lessor, Currency
 from vehicle.models import VehicleDocument, Availability, RentPrice, VehiclePhoto, PaymentMethod, VehicleModel, \
     VehicleBrand, VehicleClass, Auto, Bike, Ship, Helicopter, SpecialTechnic, Vehicle
 from vehicle.utils import merge_periods
@@ -409,6 +409,7 @@ class BaseVehicleGetSerializer(serializers.ModelSerializer):
     model = VehicleModelGetSerializer(read_only=True)
     commission = serializers.SerializerMethodField()
     city_title = serializers.SerializerMethodField()
+    currency = serializers.SerializerMethodField()
 
     class Meta:
         fields = '__all__'
@@ -416,6 +417,18 @@ class BaseVehicleGetSerializer(serializers.ModelSerializer):
 
     def get_city_title(self, obj):
         return obj.city.title if obj.city else None
+
+    @extend_schema_field(serializers.DictField())
+    def get_currency(self, obj):
+        """Валюта транспорта."""
+        if not obj.currency:
+            return None
+        return {
+            "id": obj.currency.id,
+            "code": obj.currency.code,
+            "symbol": obj.currency.symbol,
+            "title": obj.currency.title
+        }
 
     def get_commission(self, obj):
         if not hasattr(obj.owner, 'lessor') or not obj.owner.lessor:
