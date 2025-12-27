@@ -369,7 +369,12 @@ class RequestRent(models.Model):
     def calculate_amount(self):
         """ Расчет стоимости суммы к оплате (комиссия от стоимости аренды без доставки) """
         commission = self.vehicle.owner.lessor.commission
-        rent_cost = Decimal(self.total_cost) - Decimal(self.delivery_cost or 0)
+        # Для on_request total_cost - это чистая цена аренды от арендодателя
+        # Для обычных заявок total_cost включает доставку, поэтому вычитаем
+        if self.on_request:
+            rent_cost = Decimal(self.total_cost)
+        else:
+            rent_cost = Decimal(self.total_cost) - Decimal(self.delivery_cost or 0)
         return rent_cost * commission / Decimal(100)
 
     def __str__(self):
