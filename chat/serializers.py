@@ -334,15 +334,17 @@ class RequestRentSerializer(serializers.ModelSerializer):
         # Добавляем rental_days для корректного отображения на фронте
         representation['rental_days'] = instance.rental_days
 
-        # ИЗМЕНЕНИЕ: Улучшенное получение amount и payment_id
-        if hasattr(instance, 'prefetched_payment_amount') and instance.prefetched_payment_amount is not None:
-            representation['amount'] = instance.prefetched_payment_amount
-        else:
-            try:
-                payment = Payment.objects.filter(request_rent=instance).first()
-                representation['amount'] = float(payment.amount) if payment else None
-            except:
+        # ИЗМЕНЕНИЕ: amount = комиссия + доставка (полная сумма к оплате)
+        try:
+            payment = Payment.objects.filter(request_rent=instance).first()
+            if payment:
+                amount = float(payment.amount)
+                delivery = float(payment.delivery or 0)
+                representation['amount'] = amount + delivery
+            else:
                 representation['amount'] = None
+        except:
+            representation['amount'] = None
 
         if hasattr(instance, 'renter_id') and instance.renter_id:
             renter = None
