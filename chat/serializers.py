@@ -334,13 +334,16 @@ class RequestRentSerializer(serializers.ModelSerializer):
         # Добавляем rental_days для корректного отображения на фронте
         representation['rental_days'] = instance.rental_days
 
-        # ИЗМЕНЕНИЕ: amount = комиссия + доставка (полная сумма к оплате)
+        # amount = комиссия + доставка (полная сумма к оплате)
+        # Для on_request доставка не добавляется, т.к. арендодатель сам устанавливает цену
         try:
             payment = Payment.objects.filter(request_rent=instance).first()
             if payment:
                 amount = float(payment.amount)
-                delivery = float(payment.delivery or 0)
-                representation['amount'] = amount + delivery
+                if not instance.on_request:
+                    delivery = float(payment.delivery or 0)
+                    amount += delivery
+                representation['amount'] = amount
             else:
                 representation['amount'] = None
         except:
