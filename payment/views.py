@@ -75,7 +75,14 @@ class PaymentViewSet(viewsets.ViewSet):
 
             # Используем суммы в рублях для Tinkoff (платёжка работает только в RUB)
             amount_for_payment = payment.amount_rub if payment.amount_rub else payment.amount
-            delivery_for_payment = payment.delivery_rub if payment.delivery_rub else (payment.delivery or 0)
+            
+            # Для on_request доставка не добавляется - арендодатель сам устанавливает финальную цену
+            is_on_request = payment.request_rent.on_request
+            if is_on_request:
+                delivery_for_payment = 0
+            else:
+                delivery_for_payment = payment.delivery_rub if payment.delivery_rub else (payment.delivery or 0)
+            
             total_amount = amount_for_payment + delivery_for_payment
             
             receipt_items = [
@@ -88,8 +95,8 @@ class PaymentViewSet(viewsets.ViewSet):
                 }
             ]
             
-            # Добавляем доставку как отдельную позицию в чеке
-            if delivery_for_payment and delivery_for_payment > 0:
+            # Добавляем доставку как отдельную позицию в чеке (только для обычных заявок)
+            if not is_on_request and delivery_for_payment and delivery_for_payment > 0:
                 receipt_items.append({
                     "Name": "Доставка транспорта",
                     "Price": int(delivery_for_payment * 100),
