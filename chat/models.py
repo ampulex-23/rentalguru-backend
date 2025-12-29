@@ -325,16 +325,33 @@ class RequestRent(models.Model):
                 )
 
         # Обработка бонусов - вычитаются из итоговой суммы к оплате
+        # Бонусы хранятся в рублях, нужно конвертировать в валюту транспорта
         final_amount = commission_amount
         if self.bonus:
             renter = self.organizer.renter
-            bonus_to_use = min(Decimal(self.bonus), final_amount)  # Не можем использовать больше, чем сумма к оплате
+            vehicle_currency = self.vehicle.currency
+            
+            # Конвертируем бонусы из RUB в валюту транспорта
+            bonus_in_rub = Decimal(self.bonus)
+            if vehicle_currency and vehicle_currency.code != 'RUB':
+                bonus_in_vehicle_currency = CurrencyService.convert_from_rub(bonus_in_rub, vehicle_currency)
+            else:
+                bonus_in_vehicle_currency = bonus_in_rub
+            
+            # Не можем использовать больше, чем сумма к оплате
+            bonus_to_use_in_currency = min(bonus_in_vehicle_currency, final_amount)
+            
+            # Конвертируем обратно в рубли для списания с бонусного счёта
+            if vehicle_currency and vehicle_currency.code != 'RUB':
+                bonus_to_use_in_rub = CurrencyService.convert_to_rub(bonus_to_use_in_currency, vehicle_currency)
+            else:
+                bonus_to_use_in_rub = bonus_to_use_in_currency
 
-            if renter.bonus_account < bonus_to_use:
+            if renter.bonus_account < bonus_to_use_in_rub:
                 raise ValueError("Недостаточно бонусов на счете")
 
-            renter.bonus_account -= bonus_to_use
-            final_amount -= bonus_to_use
+            renter.bonus_account -= bonus_to_use_in_rub
+            final_amount -= bonus_to_use_in_currency
             renter.save()
 
         influencer = getattr(self.organizer.renter, 'influencer', None)

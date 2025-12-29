@@ -93,6 +93,33 @@ class CurrencyService:
         return round(result, 2)
     
     @classmethod
+    def convert_from_rub(cls, amount_rub, to_currency):
+        """
+        Конвертировать сумму из рублей в другую валюту.
+        
+        Args:
+            amount_rub: Сумма в рублях
+            to_currency: Целевая валюта (объект Currency)
+        
+        Returns:
+            Decimal: Сумма в целевой валюте, округлённая до 2 знаков
+        """
+        if to_currency is None:
+            return Decimal(str(amount_rub))
+        
+        if to_currency.code == 'RUB':
+            return Decimal(str(amount_rub))
+        
+        amount_decimal = Decimal(str(amount_rub))
+        
+        if to_currency.rate_to_rub == 0:
+            return amount_decimal
+        
+        # amount_in_currency = amount_rub / rate_to_rub
+        result = amount_decimal / to_currency.rate_to_rub
+        return round(result, 2)
+    
+    @classmethod
     def convert_to_rub(cls, amount, from_currency):
         """
         Конвертировать сумму в рубли.
