@@ -297,8 +297,8 @@ class RequestRent(models.Model):
         commission_amount = self.calculate_amount()
         discount_amount = 0
 
-        # Обработка промокода - скидка применяется к комиссии
-        if self.promocode:
+        # Обработка промокода - скидка применяется к комиссии (только для type='percent')
+        if self.promocode and self.promocode.type == 'percent':
             discount_amount = commission_amount * Decimal(self.promocode.total) / Decimal(100)
             commission_amount -= discount_amount
 

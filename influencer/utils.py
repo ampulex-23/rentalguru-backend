@@ -25,6 +25,10 @@ def check_promocode(user, promocode):
     if promo_code.expiration_date and promo_code.expiration_date < now():
         return "Срок действия промокода истек."
 
+    # Промокоды типа 'cash' нельзя использовать в заявках - они уже применены как бонусы
+    if promo_code.type == 'cash':
+        return "Этот промокод уже применён. Бонусы добавлены на ваш счёт."
+
     # ИЗМЕНЕНИЕ: Строгая проверка использования промокода
     used_promo = UsedPromoCode.objects.filter(user=user, promo_code=promo_code).first()
 
