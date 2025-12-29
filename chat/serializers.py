@@ -60,7 +60,17 @@ class TripSerializer(serializers.ModelSerializer):
         request_rent = RequestRent.objects.filter(chat=instance.chat).first()
         payment = Payment.objects.filter(request_rent=request_rent).first()
         representation['payment_id'] = payment.id if payment else None
-        representation['amount'] = payment.amount if payment else None
+        
+        # amount = комиссия + доставка (для обычных поездок)
+        # Для on_request доставка не добавляется - арендодатель сам устанавливает финальную цену
+        if payment:
+            amount = float(payment.amount)
+            if request_rent and not request_rent.on_request:
+                delivery = float(payment.delivery or 0)
+                amount += delivery
+            representation['amount'] = amount
+        else:
+            representation['amount'] = None
 
         # Добавляем валюту транспорта для конвертации на фронте
         vehicle = instance.vehicle
