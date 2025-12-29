@@ -1,9 +1,11 @@
 import math
+from decimal import Decimal
 
-from django.db.models import Q
+from django.db.models import Q, F, ExpressionWrapper, DecimalField
 from django_filters import rest_framework as filters
 from haversine import haversine, Unit
 
+from app.models import Currency
 from vehicle.models import AutoFeaturesAdditionally, Auto, Bike, Ship, Helicopter, SpecialTechnic, VehicleModel, \
     BikeFeaturesAdditionally, ShipFeaturesAdditionally, FeaturesForChildren, \
     FeaturesEquipment, VehicleBrand, AutoFeaturesFunctions, BikeFeaturesFunctions, ShipFeaturesFunctions
@@ -11,7 +13,7 @@ from vehicle.models import AutoFeaturesAdditionally, Auto, Bike, Ship, Helicopte
 
 class BaseFilter(filters.FilterSet):
     super_host = filters.BooleanFilter(field_name='owner__lessor__super_host', label='Суперхост')
-    day_price = filters.RangeFilter(field_name='rent_prices__total', label='Дневная цена')
+    day_price = filters.RangeFilter(method='filter_by_day_price', label='Дневная цена')
     verified_only = filters.BooleanFilter(field_name='drivers_only_verified',
                                           label='Сдается только верифицированным пользователям')
     brand = filters.CharFilter(method='filter_by_brand', label='Марка')
@@ -49,6 +51,80 @@ class BaseFilter(filters.FilterSet):
             queryset = queryset.filter(
                 Q(availabilities__end_date__gte=value.stop) | Q(availabilities__on_request=True)
             )
+        return queryset.distinct()
+
+    def filter_by_day_price(self, queryset, name, value):
+        """
+        Фильтрация по дневной цене с учётом валюты пользователя.
+        Пользователь вводит цену в своей валюте, фильтр конвертирует её
+        в валюту каждого транспорта для корректного сравнения.
+        """
+        currency_code = self.data.get('currency')
+        
+        if not currency_code:
+            # Если валюта не указана, фильтруем по оригинальной цене
+            if value.start is not None and value.stop is not None:
+                return queryset.filter(
+                    rent_prices__name='day',
+                    rent_prices__total__gte=value.start,
+                    rent_prices__total__lte=value.stop
+                ).distinct()
+            elif value.start is not None:
+                return queryset.filter(
+                    rent_prices__name='day',
+                    rent_prices__total__gte=value.start
+                ).distinct()
+            elif value.stop is not None:
+                return queryset.filter(
+                    rent_prices__name='day',
+                    rent_prices__total__lte=value.stop
+                ).distinct()
+            return queryset
+        
+        try:
+            user_currency = Currency.objects.get(code=currency_code)
+        except Currency.DoesNotExist:
+            # Если валюта не найдена, фильтруем по оригинальной цене
+            if value.start is not None and value.stop is not None:
+                return queryset.filter(
+                    rent_prices__name='day',
+                    rent_prices__total__gte=value.start,
+                    rent_prices__total__lte=value.stop
+                ).distinct()
+            elif value.start is not None:
+                return queryset.filter(
+                    rent_prices__name='day',
+                    rent_prices__total__gte=value.start
+                ).distinct()
+            elif value.stop is not None:
+                return queryset.filter(
+                    rent_prices__name='day',
+                    rent_prices__total__lte=value.stop
+                ).distinct()
+            return queryset
+        
+        # Аннотируем queryset ценой в валюте пользователя
+        # price_in_user_currency = rent_price * vehicle_currency.rate_to_rub / user_currency.rate_to_rub
+        from django.db.models.expressions import RawSQL
+        
+        # Фильтруем только по дневной цене и аннотируем конвертированной ценой
+        queryset = queryset.filter(rent_prices__name='day').annotate(
+            day_price_converted=ExpressionWrapper(
+                F('rent_prices__total') * F('currency__rate_to_rub') / Decimal(str(user_currency.rate_to_rub)),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            )
+        )
+        
+        if value.start is not None and value.stop is not None:
+            queryset = queryset.filter(
+                day_price_converted__gte=value.start,
+                day_price_converted__lte=value.stop
+            )
+        elif value.start is not None:
+            queryset = queryset.filter(day_price_converted__gte=value.start)
+        elif value.stop is not None:
+            queryset = queryset.filter(day_price_converted__lte=value.stop)
+        
         return queryset.distinct()
 
     def filter_by_brand(self, queryset, name, value):
