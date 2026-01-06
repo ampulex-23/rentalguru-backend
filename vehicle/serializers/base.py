@@ -484,7 +484,7 @@ class BaseVehicleListSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_photos(self, obj):
-        return [f"{HOST_URL}/{i.photo.url}" for i in obj.photos.all()]
+        return [f"{HOST_URL}/{i.photo.url}" for i in obj.photos.all() if i.photo]
 
     @extend_schema_field(serializers.CharField())
     def get_vehicle_type(self, obj):
