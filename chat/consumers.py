@@ -609,6 +609,19 @@ class ChatConsumer(BaseChatConsumer):
                     'type': 'error',
                     'message': 'Failed to update status.'
                 }))
+        elif data.get('type') == 'rental_offer_response':
+            # Обработка ответа арендатора на оффер от арендодателя
+            success = await self.handle_rental_offer_response(data)
+            if success:
+                await self.send(text_data=json.dumps({
+                    'type': 'offer_response_success',
+                    'message': 'Offer response processed successfully.'
+                }))
+            else:
+                await self.send(text_data=json.dumps({
+                    'type': 'error',
+                    'message': 'Failed to process offer response.'
+                }))
         else:
             await super().receive(text_data)
         await self.update_response_time()
@@ -848,6 +861,84 @@ class ChatConsumer(BaseChatConsumer):
             chat=chat,
             status='started'
         )
+
+    async def handle_rental_offer_response(self, data):
+        """
+        Обработка ответа арендатора на оффер от арендодателя.
+        Формат входящего сообщения:
+        {
+            "type": "rental_offer_response",
+            "offer_id": "...",
+            "status": "accepted" | "declined",
+            "request_rent_id": 462
+        }
+        """
+        user = self.scope['user']
+        chat = await database_sync_to_async(self.get_chat_instance)()
+        if not chat or not chat.request_rent:
+            logger.warning(f"handle_rental_offer_response: chat or request_rent not found")
+            return False
+
+        request_rent = chat.request_rent
+        
+        # Проверка текущего статуса
+        current_status = await database_sync_to_async(lambda: request_rent.status)()
+        if current_status == 'accept':
+            logger.info(f"handle_rental_offer_response: request_rent {request_rent.id} already accepted")
+            return False
+        
+        # Проверка что пользователь - организатор (арендатор)
+        is_organizer = await database_sync_to_async(lambda: user == request_rent.organizer)()
+        if not is_organizer:
+            logger.warning(f"handle_rental_offer_response: user {user.id} is not organizer of request_rent {request_rent.id}")
+            return False
+        
+        offer_status = data.get('status')
+        if offer_status not in {'accepted', 'declined'}:
+            logger.warning(f"handle_rental_offer_response: invalid status {offer_status}")
+            return False
+        
+        if offer_status == 'accepted':
+            logger.info(f"handle_rental_offer_response: accepting request_rent {request_rent.id}")
+            
+            # Проверяем что все поля заполнены
+            if not await self.check_request_rent_fields(request_rent):
+                logger.warning(f"handle_rental_offer_response: check_request_rent_fields failed for {request_rent.id}")
+                return False
+            
+            # Уведомляем арендодателя
+            vehicle_owner = await database_sync_to_async(lambda: request_rent.vehicle.owner)()
+            await self.create_notification(vehicle_owner, "Арендатор принял ваше предложение")
+            
+            # Создаём Trip
+            logger.info(f"handle_rental_offer_response: creating trip for request_rent {request_rent.id}")
+            await self.create_trip_for_request(chat, request_rent)
+            
+            # Обновляем статус на accept
+            request_rent.status = 'accept'
+            await database_sync_to_async(request_rent.save)()
+            logger.info(f"handle_rental_offer_response: request_rent {request_rent.id} status changed to accept")
+            
+            # Отправляем сообщение в чат
+            message_content = "Предложение принято. Для оплаты перейдите в «Поездки» (Информационное сообщение)"
+            await self.handle_send_message({'message': message_content})
+            
+            return True
+        
+        elif offer_status == 'declined':
+            logger.info(f"handle_rental_offer_response: declining request_rent {request_rent.id}")
+            
+            # Уведомляем арендодателя
+            vehicle_owner = await database_sync_to_async(lambda: request_rent.vehicle.owner)()
+            await self.create_notification(vehicle_owner, "Арендатор отклонил ваше предложение")
+            
+            # Статус остаётся unknown - арендодатель может отправить новый оффер
+            message_content = "Предложение отклонено арендатором (Информационное сообщение)"
+            await self.handle_send_message({'message': message_content})
+            
+            return True
+        
+        return False
 
     async def send_status_update_message(self, chat, message_content):
         """Создает и отправляет сообщение в чат о статусе заявки."""

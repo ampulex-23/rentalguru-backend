@@ -456,8 +456,8 @@ class RequestRentViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if hasattr(user, 'lessor') and request.method in ['POST']:
             raise PermissionDenied("Арендодатели не могут создавать заявки на аренду.")
-        if hasattr(user, 'renter') and request.method in ['PATCH', 'PUT']:
-            raise PermissionDenied("Арендаторы не могут обновлять заявки на аренду.")
+        # Арендаторы могут обновлять статус только для on_request заявок (принятие оффера)
+        # Конкретная проверка прав делается в perform_update
         super().check_permissions(request)
 
     def create(self, request, *args, **kwargs):
@@ -647,8 +647,22 @@ class RequestRentViewSet(viewsets.ModelViewSet):
 
             # Обработка принятия заявки
             if new_status == 'accept':
-                if instance.owner != self.request.user:
-                    raise DRFValidationError("Только владелец транспортного средства может принять запрос.")
+                user = self.request.user
+                is_owner = instance.owner == user
+                is_organizer = instance.organizer == user
+                
+                # Для on_request заявок: арендатор (organizer) может принять оффер
+                # Для обычных заявок: только владелец (owner) может принять
+                if instance.on_request:
+                    if not is_organizer:
+                        raise DRFValidationError("Только арендатор может принять предложение.")
+                    # Проверяем что все поля заполнены (арендодатель отправил оффер)
+                    if not all([instance.start_date, instance.end_date, instance.start_time, 
+                                instance.end_time, instance.total_cost and instance.total_cost > 0]):
+                        raise DRFValidationError("Невозможно принять заявку: арендодатель ещё не отправил предложение с датами и ценой.")
+                else:
+                    if not is_owner:
+                        raise DRFValidationError("Только владелец транспортного средства может принять запрос.")
 
                 model = instance.content_type.model_class()
                 object_id = instance.object_id
@@ -710,12 +724,34 @@ class RequestRentViewSet(viewsets.ModelViewSet):
                             content=f'Заявка на аренду {vehicle_instance} отклонена: выбранные даты уже заняты'
                         )
 
-                # Здесь Trip будет создан в модели RequestRent
+                # Сохраняем заявку (Payment создаётся в модели RequestRent.save())
                 serializer.save(user=self.request.user)
 
-                url = f'{settings.FRONT_URL}/ru/renter/trips'
-                content = f'Заявка на аренду {vehicle_instance} одобрена. Дата начала {instance.start_date}'
-                Notification.objects.create(user=instance.organizer, content=content, url=url)
+                # Для on_request заявок создаём Trip при принятии арендатором
+                if instance.on_request:
+                    chat = Chat.objects.filter(request_rent=instance).first()
+                    if chat and not Trip.objects.filter(chat=chat).exists():
+                        Trip.objects.create(
+                            organizer=instance.organizer,
+                            content_type=instance.content_type,
+                            object_id=instance.object_id,
+                            start_date=instance.start_date,
+                            end_date=instance.end_date,
+                            start_time=instance.start_time,
+                            end_time=instance.end_time,
+                            total_cost=instance.total_cost,
+                            chat=chat,
+                            status='started'
+                        )
+                    # Уведомляем арендодателя о принятии
+                    url = f'{settings.FRONT_URL}/ru/lessor/trips'
+                    content = f'Арендатор принял ваше предложение на аренду {vehicle_instance}. Дата начала {instance.start_date}'
+                    Notification.objects.create(user=vehicle_instance.owner, content=content, url=url)
+                else:
+                    # Для обычных заявок уведомляем арендатора
+                    url = f'{settings.FRONT_URL}/ru/renter/trips'
+                    content = f'Заявка на аренду {vehicle_instance} одобрена. Дата начала {instance.start_date}'
+                    Notification.objects.create(user=instance.organizer, content=content, url=url)
         else:
             serializer.save(user=self.request.user)
 
