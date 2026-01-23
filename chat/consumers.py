@@ -738,16 +738,16 @@ class ChatConsumer(BaseChatConsumer):
                 lessor = owner.lessor
                 commission_rate = lessor.commission
 
-                # Для on_request total_cost - это чистая цена аренды от арендодателя
+                # Для on_request total_cost - это чистая цена аренды от арендодателя (без доставки)
                 # Для обычных заявок total_cost включает доставку, поэтому вычитаем
+                # Доставка учитывается отдельно в обоих случаях
+                delivery = Decimal(request_rent.delivery_cost or 0)
                 if request_rent.on_request:
                     rent_cost = Decimal(request_rent.total_cost)
-                    delivery = Decimal(0)
                 else:
-                    rent_cost = Decimal(request_rent.total_cost) - Decimal(request_rent.delivery_cost or 0)
-                    delivery = Decimal(request_rent.delivery_cost or 0)
+                    rent_cost = Decimal(request_rent.total_cost) - delivery
                 commission = rent_cost * Decimal(commission_rate) / Decimal(100)
-                # К оплате = комиссия + доставка (для on_request доставка = 0)
+                # К оплате = комиссия + доставка
                 amount = round(float(commission + delivery), 2)
 
             # Добавляем валюту транспорта

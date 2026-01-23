@@ -30,7 +30,7 @@ def reverse_fix(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('app', '0025_alter_user_options'),  # Последняя миграция
+        ('app', '0024_currency_title_alter_lessor_commission'),
     ]
 
     operations = [

@@ -357,8 +357,8 @@ JET_DEFAULT_THEME = 'green'
 
 # Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.yandex.ru'
-EMAIL_PORT = 465
+EMAIL_HOST = getenv('EMAIL_HOST', 'smtp.yandex.ru')
+EMAIL_PORT = int(getenv('EMAIL_PORT', 465))
 EMAIL_USE_SSL = True
 EMAIL_HOST_USER = getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = getenv('EMAIL_HOST_PASSWORD')
