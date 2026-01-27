@@ -212,3 +212,27 @@ class FavoriteList(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.renter}"
+
+
+class LessorWithdrawRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Ожидает'),
+        ('in_progress', 'В процессе'),
+        ('completed', 'Выполнено'),
+        ('denied', 'Отказано'),
+    ]
+    lessor = models.ForeignKey(Lessor, on_delete=models.CASCADE, verbose_name='Арендодатель', related_name='withdraw_requests')
+    amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Сумма')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='Статус')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
+    denied_reason = models.CharField(max_length=255, null=True, blank=True, verbose_name='Причина отказа')
+    comment = models.TextField(null=True, blank=True, verbose_name='Комментарий')
+
+    class Meta:
+        verbose_name = 'Заявка на вывод средств (арендодатель)'
+        verbose_name_plural = 'Заявки на вывод средств (арендодатели)'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Заявка #{self.id} от {self.lessor} на {self.amount}"

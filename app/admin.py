@@ -1,8 +1,9 @@
 from django import forms
 from django.contrib import admin, messages
+from django.utils.html import format_html
 
 from feedback.models import FeedbackRenter
-from .models import User, Lessor, Renter, Currency, Language, RenterDocuments
+from .models import User, Lessor, Renter, Currency, Language, RenterDocuments, LessorWithdrawRequest
 
 
 @admin.register(User)
@@ -167,19 +168,66 @@ class RenterAdmin(BaseUserRelatedAdmin):
 
 @admin.register(RenterDocuments)
 class RenterDocumentsAdmin(admin.ModelAdmin):
-    list_display = ['renter', 'title', 'number', 'status', 'issue_date']
+    list_display = ['renter', 'title', 'number', 'status', 'issue_date', 'photo_preview']
     list_filter = ['status', 'title']
     search_fields = ['number', 'renter__user__email', 'renter__user__first_name', 'renter__user__last_name']
     list_select_related = ['renter', 'renter__user']
+    readonly_fields = ['photo_preview_large']
+    list_editable = ['status']
+    actions = ['approve_documents', 'reject_documents']
 
     fieldsets = [
         ('Основная информация', {
             'fields': ('renter', 'title', 'number', 'status', 'issue_date')
         }),
         ('Фото документа', {
-            'fields': ('photo',)
+            'fields': ('photo', 'photo_preview_large')
         })
     ]
+
+    def photo_preview(self, obj):
+        if obj.photo:
+            return format_html('<img src="{}" style="max-height: 50px; max-width: 100px;" />', obj.photo.url)
+        return '-'
+    photo_preview.short_description = 'Превью'
+
+    def photo_preview_large(self, obj):
+        if obj.photo:
+            return format_html('<img src="{}" style="max-height: 400px; max-width: 600px;" />', obj.photo.url)
+        return '-'
+    photo_preview_large.short_description = 'Фото документа'
+
+    @admin.action(description='Подтвердить выбранные документы')
+    def approve_documents(self, request, queryset):
+        from notification.models import Notification
+        updated = 0
+        for doc in queryset:
+            if doc.status != 'approved':
+                doc.status = 'approved'
+                doc.save()
+                Notification.objects.create(
+                    user=doc.renter.user,
+                    content='Ваш документ подтверждён',
+                    url=f'/profile/documents/'
+                )
+                updated += 1
+        self.message_user(request, f'Подтверждено документов: {updated}', messages.SUCCESS)
+
+    @admin.action(description='Отклонить выбранные документы')
+    def reject_documents(self, request, queryset):
+        from notification.models import Notification
+        updated = 0
+        for doc in queryset:
+            if doc.status != 'rejected':
+                doc.status = 'rejected'
+                doc.save()
+                Notification.objects.create(
+                    user=doc.renter.user,
+                    content='Ваш документ отклонён. Пожалуйста, загрузите корректное фото.',
+                    url=f'/profile/documents/'
+                )
+                updated += 1
+        self.message_user(request, f'Отклонено документов: {updated}', messages.WARNING)
 
 
 @admin.register(Currency)
@@ -192,3 +240,56 @@ class CurrencyAdmin(admin.ModelAdmin):
 admin.site.register(Lessor, LessorAdmin)
 admin.site.register(Renter, RenterAdmin)
 admin.site.register(Language)
+
+
+@admin.register(LessorWithdrawRequest)
+class LessorWithdrawRequestAdmin(admin.ModelAdmin):
+    list_display = ['id', 'lessor', 'amount', 'status', 'created_at', 'updated_at']
+    list_filter = ['status', 'created_at']
+    search_fields = ['lessor__user__email', 'lessor__user__first_name', 'lessor__user__last_name']
+    list_select_related = ['lessor', 'lessor__user']
+    list_editable = ['status']
+    ordering = ['-created_at']
+    actions = ['approve_requests', 'reject_requests']
+
+    fieldsets = [
+        ('Основная информация', {
+            'fields': ('lessor', 'amount', 'status')
+        }),
+        ('Дополнительно', {
+            'fields': ('denied_reason', 'comment'),
+            'classes': ('collapse',)
+        })
+    ]
+
+    @admin.action(description='Одобрить выбранные заявки')
+    def approve_requests(self, request, queryset):
+        from notification.models import Notification
+        updated = 0
+        for req in queryset:
+            if req.status != 'completed':
+                req.status = 'completed'
+                req.save()
+                Notification.objects.create(
+                    user=req.lessor.user,
+                    content=f'Ваша заявка на вывод {req.amount} одобрена',
+                    url='/profile/balance/'
+                )
+                updated += 1
+        self.message_user(request, f'Одобрено заявок: {updated}', messages.SUCCESS)
+
+    @admin.action(description='Отклонить выбранные заявки')
+    def reject_requests(self, request, queryset):
+        from notification.models import Notification
+        updated = 0
+        for req in queryset:
+            if req.status != 'denied':
+                req.status = 'denied'
+                req.save()
+                Notification.objects.create(
+                    user=req.lessor.user,
+                    content=f'Ваша заявка на вывод {req.amount} отклонена',
+                    url='/profile/balance/'
+                )
+                updated += 1
+        self.message_user(request, f'Отклонено заявок: {updated}', messages.WARNING)

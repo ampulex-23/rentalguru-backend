@@ -18,10 +18,11 @@ def send_email_password(user_name, user_email, password):
 @shared_task
 def send_verification_email(email, code):
     send_mail(
-        subject="Код подтверждения",
-        message=f'Ваш код подтверждения: {code}',
+        subject='Rental Guru - Код подтверждения',
+        message=f'Здравствуйте!\n\nВаш код подтверждения для Rental Guru: {code}\n\nКод действителен 30 минут.\n\nЕсли вы не запрашивали код, проигнорируйте это письмо.\n\n--\nКоманда Rental Guru\nhttps://rentalguru.ru',
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[email],
+        fail_silently=False,
     )
 
 

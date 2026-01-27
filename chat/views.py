@@ -651,6 +651,16 @@ class RequestRentViewSet(viewsets.ModelViewSet):
                 is_owner = instance.owner == user
                 is_organizer = instance.organizer == user
                 
+                # Валидация минимального времени аренды (8 часов для auto/bike)
+                vehicle_type = instance.content_type.model
+                if vehicle_type in ['auto', 'bike'] and instance.start_date and instance.end_date:
+                    from datetime import datetime
+                    start_dt = datetime.combine(instance.start_date, instance.start_time or datetime.min.time())
+                    end_dt = datetime.combine(instance.end_date, instance.end_time or datetime.min.time())
+                    total_hours = (end_dt - start_dt).total_seconds() / 3600
+                    if 0 < total_hours < 8:
+                        raise DRFValidationError("Минимальный срок аренды — 8 часов.")
+                
                 # Для on_request заявок: арендатор (organizer) может принять оффер
                 # Для обычных заявок: только владелец (owner) может принять
                 if instance.on_request:

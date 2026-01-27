@@ -3,7 +3,7 @@ from django.utils.html import format_html
 
 from app.models import Lessor, Renter
 from influencer.models import Influencer, ReferralLink, BankDetails, Organization, InfluencerDocuments, QRCode, \
-    PromoCode
+    PromoCode, InfluencerRequest, RequestWithdraw
 
 
 class RenterInline(admin.TabularInline):
@@ -137,4 +137,20 @@ class PromoCodeAdmin(admin.ModelAdmin):
     search_fields = ('name',)
     ordering = ('created_at',)
     readonly_fields = ('count',)
+
+
+@admin.register(InfluencerRequest)
+class InfluencerRequestAdmin(admin.ModelAdmin):
+    list_display = ('name', 'email', 'telephone', 'city', 'social', 'created_at')
+    search_fields = ('name', 'email', 'telephone', 'city')
+    list_filter = ('created_at',)
+    ordering = ('-created_at',)
+
+
+@admin.register(RequestWithdraw)
+class RequestWithdrawAdmin(admin.ModelAdmin):
+    list_display = ('influencer', 'amount', 'status', 'created_at')
+    search_fields = ('influencer__user__email', 'influencer__user__first_name')
+    list_filter = ('status', 'created_at')
+    ordering = ('-created_at',)
 

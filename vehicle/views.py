@@ -862,7 +862,7 @@ class AllVehiclesListView(ListAPIView):
     pagination_class = AllVehiclesPagination
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = BaseFilter
-    ordering_fields = ['price', 'count_trip', 'average_rating', 'created_at']
+    ordering_fields = ['id', 'price', 'count_trip', 'average_rating', 'created_at']
     ordering = ['-average_rating']
 
     def get_queryset(self):
@@ -922,8 +922,8 @@ class AllVehiclesListView(ListAPIView):
             base_qs = base_qs.order_by(ordering)
             all_vehicles.extend(list(base_qs))
 
-        # Для админов и менеджеров: неверифицированные первыми, внутри по дате
-        if user.is_authenticated and user.role in ['admin', 'manager']:
+        # Для админов и менеджеров: неверифицированные первыми, но только если нет явной сортировки
+        if user.is_authenticated and user.role in ['admin', 'manager'] and not request.GET.get('ordering'):
             # Неверифицированные: по дате создания (новые первыми)
             unverified = sorted(
                 [v for v in all_vehicles if not v.verified],

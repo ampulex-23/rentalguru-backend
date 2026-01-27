@@ -199,6 +199,12 @@ class TripSerializer(serializers.ModelSerializer):
             # Проверка доступа
             if request.user != instance.organizer and request.user.role not in ['admin', 'manager'] and request.user != instance.vehicle.owner:
                 raise serializers.ValidationError({"detail": "Вы не можете завершить поездку."})
+            
+            # Проверка оплаты - поездку нельзя завершить без оплаты
+            if instance.chat and instance.chat.request_rent:
+                payment = Payment.objects.filter(request_rent=instance.chat.request_rent).first()
+                if payment and payment.status != 'success':
+                    raise serializers.ValidationError({"detail": "Поездку нельзя завершить без оплаты."})
 
             if now().date() < instance.end_date and not instance.chat.request_rent.on_request:
                 vehicle = instance.vehicle

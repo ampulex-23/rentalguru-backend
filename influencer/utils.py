@@ -17,7 +17,7 @@ def check_promocode(user, promocode):
 
     # Поиск промокода
     try:
-        promo_code = PromoCode.objects.get(title=promocode)
+        promo_code = PromoCode.objects.get(title__iexact=promocode)
     except PromoCode.DoesNotExist:
         return "Промокод не найден."
 

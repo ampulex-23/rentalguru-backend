@@ -321,10 +321,11 @@ class SpecialTechnicFilter(BaseFilter):
 
 class VehicleModelFilter(filters.FilterSet):
     vehicle_type = filters.ChoiceFilter(choices=VehicleModel.VEHICLE_TYPES, label="Тип транспорта")
+    brand = filters.NumberFilter(field_name='brand__id', label="ID бренда")
 
     class Meta:
         model = VehicleModel
-        fields = ['vehicle_type']
+        fields = ['vehicle_type', 'brand']
 
 
 class VehicleBrandFilter(filters.FilterSet):

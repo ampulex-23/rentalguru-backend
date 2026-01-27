@@ -31,14 +31,15 @@ from manager.permissions import ManagerObjectPermission, IsAdmin
 from notification.models import Notification, FCMToken
 from vehicle.models import Vehicle
 from .filters import RenterDocumentsFilter, UserFilter
-from .models import User, RenterDocuments, Renter, Rating, FavoriteList, Lessor, Currency, Language
+from .models import User, RenterDocuments, Renter, Rating, FavoriteList, Lessor, Currency, Language, LessorWithdrawRequest
 from .permissions import IsAdminOrSelf, IsAdminOrOwner, HasRenter, IsAdminOrSelfOrDirector
 from .serializers import RegisterSerializer, ChangePasswordSerializer, UserListSerializer, UserDetailSerializer, \
     RenterDocumentsSerializer, VehicleListSerializer, UpdateRatingSerializer, CustomTokenObtainPairSerializer, \
     PasswordResetRequestSerializer, FavoriteListSerializer, VerifyCodeSerializer, SetPasswordSerializer, \
     BecomeLessorSerializer, CurrencySerializer, LanguageSerializer, CodeVerificationSerializer, \
     TelegramRegisterSerializer, EmailVerifiedSerializer, VehicleFavoriteList, OauthProviderSerializer, \
-    UserCreateSerializer, PasswordChangeSerializer
+    UserCreateSerializer, PasswordChangeSerializer, LessorWithdrawRequestSerializer, \
+    LessorWithdrawRequestListSerializer, LessorWithdrawRequestCreateSerializer
 from .task import send_verification_email, send_sms
 from .utils import referal_check
 
@@ -200,7 +201,7 @@ class SetPasswordView(APIView):
                     qr.count += 1
                     qr.save()
             if cache_data.get('source_type') == 'promo':
-                promocode = PromoCode.objects.get(title=cache_data.get('source_details'))
+                promocode = PromoCode.objects.get(title__iexact=cache_data.get('source_details'))
                 promocode.count += 1
                 promocode.save()
                 if promocode.type == 'cash' and member_type == 'renter':
@@ -1167,3 +1168,31 @@ class PasswordChangeView(APIView):
             return Response({"detail": "Пароль успешно изменен."}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(summary='Заявки на вывод средств арендодателя', description='Вывод средств для арендодателей')
+class LessorWithdrawRequestViewSet(viewsets.ModelViewSet):
+    serializer_class = LessorWithdrawRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return LessorWithdrawRequestListSerializer
+        elif self.action == 'create':
+            return LessorWithdrawRequestCreateSerializer
+        return LessorWithdrawRequestSerializer
+
+    def get_permissions(self):
+        if self.action in ['create', 'list', 'retrieve']:
+            return [IsAuthenticated()]
+        elif self.action in ['update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), ManagerObjectPermission()]
+        return super().get_permissions()
+
+    def get_queryset(self):
+        user = self.request.user
+        if hasattr(user, 'lessor'):
+            return LessorWithdrawRequest.objects.filter(lessor=user.lessor)
+        elif user.role in ['admin', 'manager']:
+            return LessorWithdrawRequest.objects.all()
+        return LessorWithdrawRequest.objects.none()

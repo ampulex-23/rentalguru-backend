@@ -21,7 +21,7 @@ from vehicle.serializers.bike import BikeListSerializer
 from vehicle.serializers.helicopter import HelicopterListSerializer
 from vehicle.serializers.ship import ShipListSerializer
 from vehicle.serializers.specialtechnic import SpecialTechnicListSerializer
-from .models import User, Lessor, Renter, RenterDocuments, FavoriteList, Currency, Language
+from .models import User, Lessor, Renter, RenterDocuments, FavoriteList, Currency, Language, LessorWithdrawRequest
 from RentalGuru.settings import redis_1
 from .task import send_verification_email
 
@@ -86,7 +86,7 @@ class RegisterSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError({"referral_code": "Неправильный реферальный код или ссылка."})
         elif promocode:
             try:
-                promo = PromoCode.objects.get(title=promocode)
+                promo = PromoCode.objects.get(title__iexact=promocode)
                 if promo.influencer:
                     cache_data['influencer_id'] = promo.influencer.id
                 cache_data['source_type'] = 'promo'
@@ -503,3 +503,34 @@ class PasswordChangeSerializer(serializers.Serializer):
         except ObjectDoesNotExist:
             raise serializers.ValidationError("Пользователь с таким ID не найден.")
         return value
+
+
+class LessorWithdrawRequestListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LessorWithdrawRequest
+        fields = ['id', 'lessor', 'created_at', 'amount', 'status']
+
+
+class LessorWithdrawRequestCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LessorWithdrawRequest
+        fields = ['amount', 'comment']
+
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Сумма должна быть больше нуля.")
+        return value
+
+    def create(self, validated_data):
+        request = self.context['request']
+        if not hasattr(request.user, 'lessor'):
+            raise serializers.ValidationError("Пользователь не является арендодателем.")
+        validated_data['lessor'] = request.user.lessor
+        return super().create(validated_data)
+
+
+class LessorWithdrawRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LessorWithdrawRequest
+        fields = '__all__'
+        read_only_fields = ['id', 'lessor', 'created_at', 'updated_at']

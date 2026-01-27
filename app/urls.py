@@ -8,7 +8,8 @@ from .views import ChangePasswordView, UserViewSet, RenterDocumentsViewSet, Upda
     LanguageListView, PhoneSendCode, PhoneVerifyCode, \
     TelegramCallbackView, TelegramRegisterView, SendCodeToEmailView, VerifiedEmailView, \
     FavoriteListView, FavoriteListDeleteView, AddVehicleToFavoriteListView, RemoveVehicleFromFavoriteListView, \
-    FavoriteListDetailView, FavoriteListAllVehiclesView, OauthCallback, UserCreateView, PasswordChangeView
+    FavoriteListDetailView, FavoriteListAllVehiclesView, OauthCallback, UserCreateView, PasswordChangeView, \
+    LessorWithdrawRequestViewSet
 
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -16,6 +17,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
 router.register(r'renter-documents', RenterDocumentsViewSet, basename='renter-documents')
+router.register(r'lessor-withdraw-requests', LessorWithdrawRequestViewSet, basename='lessor-withdraw-requests')
 
 urlpatterns = [
     path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
