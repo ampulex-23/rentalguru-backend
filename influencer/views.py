@@ -123,7 +123,7 @@ class InfluencerRequestCreateView(CreateAPIView):
 
 @extend_schema(summary="Список заявок", description="Возвращает список заявок на создание инфлюенсеров")
 class InfluencerRequestListView(ListAPIView):
-    queryset = InfluencerRequest.objects.all()
+    queryset = InfluencerRequest.objects.all().order_by('-created_at')
     serializer_class = InfluencerRequestListSerializer
     permission_classes = [PartnershipPermission]
 
@@ -267,7 +267,7 @@ class ApplyPromoCodeView(APIView):
             raise ValidationError('Не указан промокод.')
 
         try:
-            promo_code = PromoCode.objects.get(title=promo_code_title)
+            promo_code = PromoCode.objects.get(title__iexact=promo_code_title)
         except PromoCode.DoesNotExist:
             raise ValidationError('Промокод не найден.')
 
@@ -314,7 +314,7 @@ class PromoCodeByTitleAPIView(APIView):
         if not title:
             return Response({'detail': 'title is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        promo = get_object_or_404(PromoCode, title=title)
+        promo = get_object_or_404(PromoCode, title__iexact=title)
         serializer = PromoCodeSimpleSerializer(promo)
         return Response(serializer.data)
 
