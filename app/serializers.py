@@ -508,7 +508,7 @@ class PasswordChangeSerializer(serializers.Serializer):
 class LessorWithdrawRequestListSerializer(serializers.ModelSerializer):
     class Meta:
         model = LessorWithdrawRequest
-        fields = ['id', 'lessor', 'created_at', 'amount', 'status']
+        fields = ['id', 'lessor', 'created_at', 'amount', 'status', 'comment']
 
 
 class LessorWithdrawRequestCreateSerializer(serializers.ModelSerializer):

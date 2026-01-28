@@ -244,7 +244,7 @@ admin.site.register(Language)
 
 @admin.register(LessorWithdrawRequest)
 class LessorWithdrawRequestAdmin(admin.ModelAdmin):
-    list_display = ['id', 'lessor', 'amount', 'status', 'created_at', 'updated_at']
+    list_display = ['id', 'lessor', 'amount', 'status', 'comment', 'created_at', 'updated_at']
     list_filter = ['status', 'created_at']
     search_fields = ['lessor__user__email', 'lessor__user__first_name', 'lessor__user__last_name']
     list_select_related = ['lessor', 'lessor__user']
