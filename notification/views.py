@@ -40,6 +40,12 @@ class NotificationViewSet(viewsets.ModelViewSet):
         notification.save()
         serializer = self.get_serializer(notification)
         return Response(serializer.data)
+    
+    @action(detail=False, methods=['post'], url_path='mark_all_read')
+    def mark_all_read(self, request):
+        """Отметить все уведомления пользователя как прочитанные"""
+        updated = Notification.objects.filter(user=request.user, read_it=False).update(read_it=True)
+        return Response({'marked_as_read': updated}, status=status.HTTP_200_OK)
 
 
 @extend_schema(summary="FCM токен (тест)", description="Тестовая страница FCM токена")
