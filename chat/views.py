@@ -683,6 +683,19 @@ class RequestRentViewSet(viewsets.ModelViewSet):
                 except model.DoesNotExist:
                     raise DRFValidationError(f"Транспорт с ID {object_id} не найден.")
 
+                # Проверка минимального срока аренды для auto/bike (8 часов)
+                vehicle_type = instance.content_type.model  # 'auto', 'bike', etc.
+                if vehicle_type in ['auto', 'bike'] and instance.start_date and instance.end_date:
+                    if instance.start_date == instance.end_date and instance.start_time and instance.end_time:
+                        start_dt = datetime.combine(instance.start_date, instance.start_time)
+                        end_dt = datetime.combine(instance.end_date, instance.end_time)
+                        total_hours = (end_dt - start_dt).total_seconds() / 3600
+                        if total_hours < 8:
+                            raise DRFValidationError(
+                                "Минимальный срок аренды автомобилей и мотоциклов — 8 часов. "
+                                "Почасовая аренда доступна только для судов, вертолётов и спецтехники."
+                            )
+
                 # Для заявок "по запросу" (on_request=True) не нужно вычитать даты из availabilities,
                 # так как транспорт сдаётся только по согласованию с арендодателем
                 if not instance.on_request:

@@ -665,6 +665,15 @@ class ChatConsumer(BaseChatConsumer):
         request_status = vehicle_data['valid_status']
 
         if is_owner and has_availability and request_status:
+            # Проверка минимального срока аренды для auto/bike (8 часов)
+            validation_error = await self.validate_hourly_rental(request_rent, update_data)
+            if validation_error:
+                await self.send(text_data=json.dumps({
+                    'type': 'error',
+                    'message': validation_error
+                }))
+                return False
+            
             await self.update_request_rent_fields(request_rent, update_data)
 
             message_content = await self.prepare_message_content(request_rent)
@@ -776,6 +785,43 @@ class ChatConsumer(BaseChatConsumer):
     @database_sync_to_async
     def check_request_status(self, request_rent):
         return request_rent.status in ['unknown', 'denied']
+
+    @database_sync_to_async
+    def validate_hourly_rental(self, request_rent, update_data):
+        """Проверка минимального срока аренды для auto/bike (8 часов)"""
+        from datetime import datetime
+        
+        vehicle_type = request_rent.content_type.model if request_rent.content_type else None
+        if vehicle_type not in ['auto', 'bike']:
+            return None  # Нет ошибки для других типов
+        
+        start_date = update_data.get('start_date') or request_rent.start_date
+        end_date = update_data.get('end_date') or request_rent.end_date
+        start_time = update_data.get('start_time') or request_rent.start_time
+        end_time = update_data.get('end_time') or request_rent.end_time
+        
+        if not all([start_date, end_date, start_time, end_time]):
+            return None  # Недостаточно данных для проверки
+        
+        # Преобразуем строки в объекты если нужно
+        if isinstance(start_date, str):
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        if isinstance(end_date, str):
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        if isinstance(start_time, str):
+            start_time = datetime.strptime(start_time, '%H:%M:%S').time()
+        if isinstance(end_time, str):
+            end_time = datetime.strptime(end_time, '%H:%M:%S').time()
+        
+        if start_date == end_date:
+            start_dt = datetime.combine(start_date, start_time)
+            end_dt = datetime.combine(end_date, end_time)
+            total_hours = (end_dt - start_dt).total_seconds() / 3600
+            
+            if total_hours < 8:
+                return "Минимальный срок аренды автомобилей и мотоциклов — 8 часов. Почасовая аренда доступна только для судов, вертолётов и спецтехники."
+        
+        return None  # Нет ошибки
 
     @database_sync_to_async
     def has_on_request_availability(self, vehicle):
