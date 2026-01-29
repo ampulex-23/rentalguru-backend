@@ -457,9 +457,11 @@ class RequestRentViewSet(viewsets.ModelViewSet):
         return RequestRent.objects.none()
 
     def check_permissions(self, request):
+        user = self.request.user
+        if hasattr(user, 'lessor') and request.method in ['POST']:
+            raise PermissionDenied("Арендодатели не могут создавать заявки на аренду.")
         # Арендаторы могут обновлять статус только для on_request заявок (принятие оффера)
         # Конкретная проверка прав делается в perform_update
-        # Арендодатели могут создавать заявки только для on_request чатов (отправка оффера)
         super().check_permissions(request)
 
     def create(self, request, *args, **kwargs):
@@ -497,18 +499,17 @@ class RequestRentViewSet(viewsets.ModelViewSet):
         # if vehicle_instance.drivers_only_verified and not request.user.renter.verification:
         #     raise DRFValidationError("Транспорт сдается только верифицированным пользователям")
 
-        # Проверка рейтинга арендатора (только для арендаторов)
-        if hasattr(request.user, 'renter'):
-            renter_rating = request.user.renter.get_average_rating()
-            vehicle_rating = vehicle_instance.drivers_rating
+        # Проверка рейтинга арендатора
+        renter_rating = request.user.renter.get_average_rating()
+        vehicle_rating = vehicle_instance.drivers_rating
 
-            if (
-                    vehicle_rating is not None and
-                    renter_rating is not None and
-                    renter_rating != 0 and
-                    vehicle_rating > Decimal(renter_rating)
-            ):
-                raise DRFValidationError("Низкий рейтинг арендатора для данного транспорта")
+        if (
+                vehicle_rating is not None and
+                renter_rating is not None and
+                renter_rating != 0 and
+                vehicle_rating > Decimal(renter_rating)
+        ):
+            raise DRFValidationError("Низкий рейтинг арендатора для данного транспорта")
 
         if availabilities.filter(on_request=True).exists():
             request_start_date = None
