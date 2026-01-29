@@ -94,6 +94,19 @@ class Lessor(models.Model):
                                    verbose_name='Инфлюенсер')
     franchise = models.ForeignKey(Franchise, on_delete=models.SET_NULL, null=True, blank=True, related_name='lessors',
                                   verbose_name='Франшиза')
+    
+    # Реквизиты компании
+    director_name = models.CharField(max_length=255, null=True, blank=True, verbose_name='ФИО директора')
+    company_name = models.CharField(max_length=255, null=True, blank=True, verbose_name='Название компании')
+    country = models.CharField(max_length=100, null=True, blank=True, verbose_name='Страна')
+    city = models.CharField(max_length=100, null=True, blank=True, verbose_name='Город')
+    address = models.CharField(max_length=255, null=True, blank=True, verbose_name='Адрес')
+    account_number = models.CharField(max_length=50, null=True, blank=True, verbose_name='Расчетный счет')
+    account_owner = models.CharField(max_length=255, null=True, blank=True, verbose_name='ФИО владельца счета')
+    phone_1 = models.CharField(max_length=20, null=True, blank=True, verbose_name='Телефон 1')
+    phone_2 = models.CharField(max_length=20, null=True, blank=True, verbose_name='Телефон 2')
+    email_1 = models.EmailField(null=True, blank=True, verbose_name='Email 1')
+    email_2 = models.EmailField(null=True, blank=True, verbose_name='Email 2')
 
     def clean(self):
         if not (1 <= float(self.commission) <= 90):

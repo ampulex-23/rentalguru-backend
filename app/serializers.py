@@ -185,12 +185,16 @@ class RenterDetailSerializer(serializers.ModelSerializer):
 
 
 class LessorDetailSerializer(serializers.ModelSerializer):
-    commission = serializers.FloatField()
+    commission = serializers.FloatField(read_only=True)
     renting_since = serializers.SerializerMethodField()
     
     class Meta:
         model = Lessor
-        fields = ['id', 'super_host', 'count_trip', 'average_response_time', 'commission', 'renting_since']
+        fields = [
+            'id', 'super_host', 'count_trip', 'average_response_time', 'commission', 'renting_since',
+            'director_name', 'company_name', 'country', 'city', 'address',
+            'account_number', 'account_owner', 'phone_1', 'phone_2', 'email_1', 'email_2'
+        ]
         read_only_fields = ['id', 'super_host', 'count_trip', 'average_response_time', 'commission', 'renting_since']
 
     def get_renting_since(self, obj):
