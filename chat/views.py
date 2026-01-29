@@ -571,11 +571,19 @@ class RequestRentViewSet(viewsets.ModelViewSet):
                 end_dt = datetime.combine(request_end_date, end_time_obj)
                 total_hours = (end_dt - start_dt).total_seconds() / 3600
                 
+                # Для auto и bike почасовая аренда ЗАПРЕЩЕНА
+                # Почасовая аренда доступна только для: ship, helicopter, special_technic
+                if vehicle_type in ['auto', 'bike'] and total_hours < 8:
+                    raise DRFValidationError(
+                        "Минимальный срок аренды автомобилей и мотоциклов — 8 часов. "
+                        "Почасовая аренда доступна только для судов, вертолётов и спецтехники."
+                    )
+                
                 # Если >= 8 часов и есть дневной тариф - считаем как дневную аренду
                 if total_hours >= 8 and vehicle_instance.rent_prices.filter(name='day').exists():
                     # Это дневная аренда, не почасовая - не блокируем проверкой min_days
                     is_hourly_rental = True  # Пропускаем проверку дней
-                # Если < 8 часов или нет дневного тарифа, нужен почасовой
+                # Если < 8 часов или нет дневного тарифа, нужен почасовой (только для спец. типов)
                 elif vehicle_instance.rent_prices.filter(name='hour').exists():
                     is_hourly_rental = True
                 else:
@@ -650,16 +658,6 @@ class RequestRentViewSet(viewsets.ModelViewSet):
                 user = self.request.user
                 is_owner = instance.owner == user
                 is_organizer = instance.organizer == user
-                
-                # Валидация минимального времени аренды (8 часов для auto/bike)
-                vehicle_type = instance.content_type.model
-                if vehicle_type in ['auto', 'bike'] and instance.start_date and instance.end_date:
-                    from datetime import datetime
-                    start_dt = datetime.combine(instance.start_date, instance.start_time or datetime.min.time())
-                    end_dt = datetime.combine(instance.end_date, instance.end_time or datetime.min.time())
-                    total_hours = (end_dt - start_dt).total_seconds() / 3600
-                    if 0 < total_hours < 8:
-                        raise DRFValidationError("Минимальный срок аренды — 8 часов.")
                 
                 # Для on_request заявок: арендатор (organizer) может принять оффер
                 # Для обычных заявок: только владелец (owner) может принять
