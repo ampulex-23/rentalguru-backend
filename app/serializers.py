@@ -230,7 +230,7 @@ class ManagerSerializers(serializers.ModelSerializer):
 class UserDetailSerializer(serializers.ModelSerializer):
     manager = ManagerSerializers(read_only=True)
     renter = RenterDetailSerializer(read_only=True)
-    lessor = LessorDetailSerializer(read_only=True)
+    lessor = LessorDetailSerializer(required=False)
     influencer = InfluencerSerializers(read_only=True)
     currency = CurrencySerializer(read_only=True)
     currency_id = serializers.PrimaryKeyRelatedField(
