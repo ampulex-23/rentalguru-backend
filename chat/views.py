@@ -152,6 +152,10 @@ class TripViewSet(viewsets.ModelViewSet):
                     content=lessor_message
                 )
                 
+                # Устанавливаем флаг запроса на отмену
+                trip.cancel_requested = True
+                trip.save(update_fields=['cancel_requested'])
+                
                 return Response({
                     "detail": "Заявка на отмену поездки создана. Менеджер свяжется с вами в ближайшее время.",
                     "support_chat_id": chat_support.id

@@ -443,6 +443,7 @@ class Trip(models.Model):
     start_date = models.DateField(verbose_name='Начало поездки')
     end_date = models.DateField(verbose_name='Конец поездки')
     total_cost = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Стоимость аренды', default=0.00)
+    cancel_requested = models.BooleanField(default=False, verbose_name='Запрос на отмену')
 
     @property
     def owner(self):

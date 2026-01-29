@@ -200,6 +200,10 @@ class TripSerializer(serializers.ModelSerializer):
             if request.user != instance.organizer and request.user.role not in ['admin', 'manager'] and request.user != instance.vehicle.owner:
                 raise serializers.ValidationError({"detail": "Вы не можете завершить поездку."})
             
+            # Проверка запроса на отмену - нельзя завершить пока запрос на рассмотрении
+            if instance.cancel_requested and request.user.role not in ['admin', 'manager']:
+                raise serializers.ValidationError({"detail": "Поездку нельзя завершить: ожидается решение администратора по запросу на отмену."})
+            
             # Проверка оплаты - поездку нельзя завершить без оплаты
             if instance.chat and instance.chat.request_rent:
                 payment = Payment.objects.filter(request_rent=instance.chat.request_rent).first()
