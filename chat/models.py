@@ -293,11 +293,20 @@ class RequestRent(models.Model):
         from payment.models import Payment
         from app.services.currency_service import CurrencyService
 
-        # Рассчитываем комиссию (сумму к оплате)
-        commission_amount = self.calculate_amount()
-        discount_amount = 0
+        # Рассчитываем комиссию от аренды
+        rent_commission = self.calculate_amount()
+        
+        # Рассчитываем комиссию от доставки
+        commission_rate = self.vehicle.owner.lessor.commission
+        delivery_commission = Decimal(0)
+        if self.delivery and self.delivery_cost:
+            delivery_commission = Decimal(self.delivery_cost) * commission_rate / Decimal(100)
+        
+        # Полная сумма к оплате = комиссия от аренды + комиссия от доставки
+        commission_amount = rent_commission + delivery_commission
+        discount_amount = Decimal(0)
 
-        # Обработка промокода - скидка применяется к комиссии (только для type='percent')
+        # Обработка промокода - скидка применяется ко ВСЕЙ сумме к оплате (аренда + доставка)
         if self.promocode and self.promocode.type == 'percent':
             discount_amount = commission_amount * Decimal(self.promocode.total) / Decimal(100)
             commission_amount -= discount_amount

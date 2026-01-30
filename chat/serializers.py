@@ -61,17 +61,9 @@ class TripSerializer(serializers.ModelSerializer):
         payment = Payment.objects.filter(request_rent=request_rent).first()
         representation['payment_id'] = payment.id if payment else None
         
-        # amount = комиссия от аренды + комиссия от доставки (для обычных поездок)
-        # Для on_request доставка не добавляется - арендодатель сам устанавливает финальную цену
+        # amount уже включает комиссию от аренды + комиссию от доставки (рассчитывается в create_payment)
         if payment:
-            amount = float(payment.amount)
-            if request_rent and not request_rent.on_request and request_rent.delivery:
-                # Добавляем комиссию от доставки, а не полную доставку
-                delivery = float(payment.delivery or 0)
-                commission_rate = float(request_rent.vehicle.owner.lessor.commission) / 100
-                delivery_commission = delivery * commission_rate
-                amount += delivery_commission
-            representation['amount'] = round(amount, 2)
+            representation['amount'] = round(float(payment.amount), 2)
         else:
             representation['amount'] = None
 
@@ -357,19 +349,11 @@ class RequestRentSerializer(serializers.ModelSerializer):
         # Добавляем rental_days для корректного отображения на фронте
         representation['rental_days'] = instance.rental_days
 
-        # amount = комиссия от аренды + комиссия от доставки (полная сумма к оплате)
-        # Для on_request доставка не добавляется - арендодатель сам устанавливает финальную цену
+        # amount уже включает комиссию от аренды + комиссию от доставки (рассчитывается в create_payment)
         try:
             payment = Payment.objects.filter(request_rent=instance).first()
             if payment:
-                amount = float(payment.amount)
-                if not instance.on_request and instance.delivery:
-                    # Добавляем комиссию от доставки, а не полную доставку
-                    delivery = float(payment.delivery or 0)
-                    commission_rate = float(instance.vehicle.owner.lessor.commission) / 100
-                    delivery_commission = delivery * commission_rate
-                    amount += delivery_commission
-                representation['amount'] = round(amount, 2)
+                representation['amount'] = round(float(payment.amount), 2)
             else:
                 representation['amount'] = None
         except:
