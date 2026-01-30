@@ -728,6 +728,11 @@ class ChatConsumer(BaseChatConsumer):
         if 'object_id' in update_data:
             request_rent.object_id = update_data['object_id']
 
+        # Убеждаемся что on_request=True для заявок, обновляемых арендодателем через WebSocket
+        # (арендодатель отправляет оффер - это всегда on_request)
+        if request_rent.on_request is None or request_rent.on_request is False:
+            request_rent.on_request = True
+
         request_rent.save()
 
     @database_sync_to_async
