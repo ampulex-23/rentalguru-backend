@@ -4,7 +4,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.search import TrigramSimilarity
-from django.db.models import Q, Min, Prefetch
+from django.db.models import Q, Min, Prefetch, F
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
@@ -206,9 +206,9 @@ class AutoViewSet(BaseViewSet):
         ordering = request.query_params.get('ordering')
         if ordering and 'price' in ordering:
             if ordering.startswith('-'):
-                queryset = queryset.order_by('-price')
+                queryset = queryset.order_by(F('price').desc(nulls_last=True))
             else:
-                queryset = queryset.order_by('price')
+                queryset = queryset.order_by(F('price').asc(nulls_last=True))
         
         # Для админов/менеджеров: неверифицированные первыми, но только если нет явной сортировки
         if request.user.is_authenticated and request.user.role in ['admin', 'manager'] and not ordering:
@@ -304,9 +304,9 @@ class BikeViewSet(BaseViewSet):
         ordering = request.query_params.get('ordering')
         if ordering and 'price' in ordering:
             if ordering.startswith('-'):
-                queryset = queryset.order_by('-price')
+                queryset = queryset.order_by(F('price').desc(nulls_last=True))
             else:
-                queryset = queryset.order_by('price')
+                queryset = queryset.order_by(F('price').asc(nulls_last=True))
         
         # Для админов/менеджеров: неверифицированные первыми, но только если нет явной сортировки
         if request.user.is_authenticated and request.user.role in ['admin', 'manager'] and not ordering:
@@ -399,9 +399,9 @@ class ShipViewSet(BaseViewSet):
         ordering = request.query_params.get('ordering')
         if ordering and 'price' in ordering:
             if ordering.startswith('-'):
-                queryset = queryset.order_by('-price')
+                queryset = queryset.order_by(F('price').desc(nulls_last=True))
             else:
-                queryset = queryset.order_by('price')
+                queryset = queryset.order_by(F('price').asc(nulls_last=True))
         
         if request.user.is_authenticated and request.user.role in ['admin', 'manager'] and not ordering:
             unverified = queryset.filter(verified=False).order_by('-created_at')
@@ -492,9 +492,9 @@ class HelicopterViewSet(BaseViewSet):
         ordering = request.query_params.get('ordering')
         if ordering and 'price' in ordering:
             if ordering.startswith('-'):
-                queryset = queryset.order_by('-price')
+                queryset = queryset.order_by(F('price').desc(nulls_last=True))
             else:
-                queryset = queryset.order_by('price')
+                queryset = queryset.order_by(F('price').asc(nulls_last=True))
         
         if request.user.is_authenticated and request.user.role in ['admin', 'manager'] and not ordering:
             unverified = queryset.filter(verified=False).order_by('-created_at')
@@ -585,9 +585,9 @@ class SpecialTechnicViewSet(BaseViewSet):
         ordering = request.query_params.get('ordering')
         if ordering and 'price' in ordering:
             if ordering.startswith('-'):
-                queryset = queryset.order_by('-price')
+                queryset = queryset.order_by(F('price').desc(nulls_last=True))
             else:
-                queryset = queryset.order_by('price')
+                queryset = queryset.order_by(F('price').asc(nulls_last=True))
         
         if request.user.is_authenticated and request.user.role in ['admin', 'manager'] and not ordering:
             unverified = queryset.filter(verified=False).order_by('-created_at')
@@ -985,7 +985,7 @@ class AllVehiclesListView(ListAPIView):
                 'brand', 'model', 'city', 'owner', 'owner__lessor'
             )
 
-            base_qs = base_qs.order_by(ordering)
+            # Не применяем сортировку здесь - она будет применена после объединения всех типов
             all_vehicles.extend(list(base_qs))
 
         # Для админов и менеджеров: неверифицированные первыми, но только если нет явной сортировки
