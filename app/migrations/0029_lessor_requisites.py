@@ -4,7 +4,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('app', '0028_alter_user_options'),
+        ('app', '0028_populate_currency_symbols'),
     ]
 
     operations = [
