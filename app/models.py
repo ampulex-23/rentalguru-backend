@@ -197,6 +197,7 @@ class RenterDocuments(models.Model):
     class Meta:
         verbose_name = 'Документ'
         verbose_name_plural = 'Документы'
+        unique_together = ('renter', 'title')
 
 
 class Rating(models.Model):
