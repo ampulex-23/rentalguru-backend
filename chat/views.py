@@ -495,9 +495,10 @@ class RequestRentViewSet(viewsets.ModelViewSet):
 
         availabilities = vehicle_instance.availabilities.all()
 
-        # Проверка - сдается ли транспорт только верифицированным пользователям
-        if vehicle_instance.drivers_only_verified and not request.user.renter.verification:
-            raise DRFValidationError("Транспорт сдается только верифицированным пользователям. Пожалуйста, загрузите документы в разделе 'Верификация'.")
+        # Проверка верификации арендатора - ОБЯЗАТЕЛЬНА для всех
+        # Поле drivers_only_verified больше не учитывается - верификация требуется всегда
+        if not request.user.renter.verification:
+            raise DRFValidationError("Аренда транспорта доступна только верифицированным пользователям. Пожалуйста, загрузите документы в разделе 'Верификация'.")
 
         # Проверка рейтинга арендатора
         renter_rating = request.user.renter.get_average_rating()
