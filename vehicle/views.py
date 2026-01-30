@@ -202,8 +202,16 @@ class AutoViewSet(BaseViewSet):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         
-        # Для админов/менеджеров: неверифицированные первыми (по created_at desc), затем верифицированные (по verified_at desc)
-        if request.user.is_authenticated and request.user.role in ['admin', 'manager']:
+        # Применяем сортировку по аннотированному полю price (OrderingFilter не работает с аннотациями)
+        ordering = request.query_params.get('ordering')
+        if ordering and 'price' in ordering:
+            if ordering.startswith('-'):
+                queryset = queryset.order_by('-price')
+            else:
+                queryset = queryset.order_by('price')
+        
+        # Для админов/менеджеров: неверифицированные первыми, но только если нет явной сортировки
+        if request.user.is_authenticated and request.user.role in ['admin', 'manager'] and not ordering:
             unverified = queryset.filter(verified=False).order_by('-created_at')
             verified = queryset.filter(verified=True).order_by('-verified_at')
             from itertools import chain
@@ -216,7 +224,13 @@ class AutoViewSet(BaseViewSet):
             serializer = self.get_serializer(queryset, many=True)
             return Response(serializer.data)
         
-        return super().list(request, *args, **kwargs)
+        # Для обычных пользователей
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -286,8 +300,16 @@ class BikeViewSet(BaseViewSet):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         
-        # Для админов/менеджеров: неверифицированные первыми (по created_at desc), затем верифицированные (по verified_at desc)
-        if request.user.is_authenticated and request.user.role in ['admin', 'manager']:
+        # Применяем сортировку по аннотированному полю price
+        ordering = request.query_params.get('ordering')
+        if ordering and 'price' in ordering:
+            if ordering.startswith('-'):
+                queryset = queryset.order_by('-price')
+            else:
+                queryset = queryset.order_by('price')
+        
+        # Для админов/менеджеров: неверифицированные первыми, но только если нет явной сортировки
+        if request.user.is_authenticated and request.user.role in ['admin', 'manager'] and not ordering:
             unverified = queryset.filter(verified=False).order_by('-created_at')
             verified = queryset.filter(verified=True).order_by('-verified_at')
             from itertools import chain
@@ -300,7 +322,12 @@ class BikeViewSet(BaseViewSet):
             serializer = self.get_serializer(queryset, many=True)
             return Response(serializer.data)
         
-        return super().list(request, *args, **kwargs)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -368,7 +395,15 @@ class ShipViewSet(BaseViewSet):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         
-        if request.user.is_authenticated and request.user.role in ['admin', 'manager']:
+        # Применяем сортировку по аннотированному полю price
+        ordering = request.query_params.get('ordering')
+        if ordering and 'price' in ordering:
+            if ordering.startswith('-'):
+                queryset = queryset.order_by('-price')
+            else:
+                queryset = queryset.order_by('price')
+        
+        if request.user.is_authenticated and request.user.role in ['admin', 'manager'] and not ordering:
             unverified = queryset.filter(verified=False).order_by('-created_at')
             verified = queryset.filter(verified=True).order_by('-verified_at')
             from itertools import chain
@@ -381,7 +416,12 @@ class ShipViewSet(BaseViewSet):
             serializer = self.get_serializer(queryset, many=True)
             return Response(serializer.data)
         
-        return super().list(request, *args, **kwargs)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -448,7 +488,15 @@ class HelicopterViewSet(BaseViewSet):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         
-        if request.user.is_authenticated and request.user.role in ['admin', 'manager']:
+        # Применяем сортировку по аннотированному полю price
+        ordering = request.query_params.get('ordering')
+        if ordering and 'price' in ordering:
+            if ordering.startswith('-'):
+                queryset = queryset.order_by('-price')
+            else:
+                queryset = queryset.order_by('price')
+        
+        if request.user.is_authenticated and request.user.role in ['admin', 'manager'] and not ordering:
             unverified = queryset.filter(verified=False).order_by('-created_at')
             verified = queryset.filter(verified=True).order_by('-verified_at')
             from itertools import chain
@@ -461,7 +509,12 @@ class HelicopterViewSet(BaseViewSet):
             serializer = self.get_serializer(queryset, many=True)
             return Response(serializer.data)
         
-        return super().list(request, *args, **kwargs)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -528,7 +581,15 @@ class SpecialTechnicViewSet(BaseViewSet):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         
-        if request.user.is_authenticated and request.user.role in ['admin', 'manager']:
+        # Применяем сортировку по аннотированному полю price
+        ordering = request.query_params.get('ordering')
+        if ordering and 'price' in ordering:
+            if ordering.startswith('-'):
+                queryset = queryset.order_by('-price')
+            else:
+                queryset = queryset.order_by('price')
+        
+        if request.user.is_authenticated and request.user.role in ['admin', 'manager'] and not ordering:
             unverified = queryset.filter(verified=False).order_by('-created_at')
             verified = queryset.filter(verified=True).order_by('-verified_at')
             from itertools import chain
@@ -541,7 +602,12 @@ class SpecialTechnicViewSet(BaseViewSet):
             serializer = self.get_serializer(queryset, many=True)
             return Response(serializer.data)
         
-        return super().list(request, *args, **kwargs)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
