@@ -1001,7 +1001,7 @@ class AllVehiclesListView(ListAPIView):
                 'availabilities',
                 'rent_prices',
             ).select_related(
-                'brand', 'model', 'city', 'owner', 'owner__lessor'
+                'brand', 'model', 'city', 'owner', 'owner__lessor', 'currency'
             )
 
             # Не применяем сортировку здесь - она будет применена после объединения всех типов
