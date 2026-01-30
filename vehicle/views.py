@@ -177,9 +177,13 @@ class AutoViewSet(BaseViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = (Auto.objects.annotate(price=Min('rent_prices__price'))
+        # Аннотируем цену в рублях для корректной сортировки между разными валютами
+        queryset = (Auto.objects.annotate(
+                        price=Min('rent_prices__price'),
+                        price_rub=Min(F('rent_prices__price') * F('currency__rate_to_rub'))
+                    )
                     .select_related('owner', 'brand', 'model', 'transmission', 'fuel_type', 'body_type',
-                                    'vehicle_class', 'city', 'owner__lessor')
+                                    'vehicle_class', 'city', 'owner__lessor', 'currency')
                     .prefetch_related('payment_method', 'features_for_children', 'features_functions', 'photos',
                                       'features_additionally', 'availabilities', 'documents', 'rent_prices'))
         if user.is_authenticated:
@@ -202,13 +206,13 @@ class AutoViewSet(BaseViewSet):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         
-        # Применяем сортировку по аннотированному полю price (OrderingFilter не работает с аннотациями)
+        # Применяем сортировку по цене в рублях для корректного сравнения между валютами
         ordering = request.query_params.get('ordering')
         if ordering and 'price' in ordering:
             if ordering.startswith('-'):
-                queryset = queryset.order_by(F('price').desc(nulls_last=True))
+                queryset = queryset.order_by(F('price_rub').desc(nulls_last=True))
             else:
-                queryset = queryset.order_by(F('price').asc(nulls_last=True))
+                queryset = queryset.order_by(F('price_rub').asc(nulls_last=True))
         
         # Для админов/менеджеров: неверифицированные первыми, но только если нет явной сортировки
         if request.user.is_authenticated and request.user.role in ['admin', 'manager'] and not ordering:
@@ -277,9 +281,12 @@ class BikeViewSet(BaseViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = (Bike.objects.annotate(price=Min('rent_prices__price'))
+        queryset = (Bike.objects.annotate(
+                        price=Min('rent_prices__price'),
+                        price_rub=Min(F('rent_prices__price') * F('currency__rate_to_rub'))
+                    )
                     .select_related('owner', 'brand', 'model', 'transmission', 'vehicle_class', 'city', 'owner__lessor',
-                                    'body_type')
+                                    'body_type', 'currency')
                     .prefetch_related('payment_method', 'features_functions', 'features_additionally', 'availabilities',
                                       'documents', 'rent_prices', 'photos'))
         if user.is_authenticated:
@@ -300,13 +307,13 @@ class BikeViewSet(BaseViewSet):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         
-        # Применяем сортировку по аннотированному полю price
+        # Применяем сортировку по цене в рублях
         ordering = request.query_params.get('ordering')
         if ordering and 'price' in ordering:
             if ordering.startswith('-'):
-                queryset = queryset.order_by(F('price').desc(nulls_last=True))
+                queryset = queryset.order_by(F('price_rub').desc(nulls_last=True))
             else:
-                queryset = queryset.order_by(F('price').asc(nulls_last=True))
+                queryset = queryset.order_by(F('price_rub').asc(nulls_last=True))
         
         # Для админов/менеджеров: неверифицированные первыми, но только если нет явной сортировки
         if request.user.is_authenticated and request.user.role in ['admin', 'manager'] and not ordering:
@@ -374,8 +381,11 @@ class ShipViewSet(BaseViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = (Ship.objects.annotate(price=Min('rent_prices__price'))
-                    .select_related('owner', 'brand', 'model', 'vehicle_class', 'city', 'owner__lessor', 'type_ship')
+        queryset = (Ship.objects.annotate(
+                        price=Min('rent_prices__price'),
+                        price_rub=Min(F('rent_prices__price') * F('currency__rate_to_rub'))
+                    )
+                    .select_related('owner', 'brand', 'model', 'vehicle_class', 'city', 'owner__lessor', 'type_ship', 'currency')
                     .prefetch_related('payment_method', 'features_functions', 'features_additionally',
                                       'features_equipment', 'availabilities', 'documents', 'rent_prices', 'photos'))
         if user.is_authenticated:
@@ -395,13 +405,13 @@ class ShipViewSet(BaseViewSet):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         
-        # Применяем сортировку по аннотированному полю price
+        # Применяем сортировку по цене в рублях
         ordering = request.query_params.get('ordering')
         if ordering and 'price' in ordering:
             if ordering.startswith('-'):
-                queryset = queryset.order_by(F('price').desc(nulls_last=True))
+                queryset = queryset.order_by(F('price_rub').desc(nulls_last=True))
             else:
-                queryset = queryset.order_by(F('price').asc(nulls_last=True))
+                queryset = queryset.order_by(F('price_rub').asc(nulls_last=True))
         
         if request.user.is_authenticated and request.user.role in ['admin', 'manager'] and not ordering:
             unverified = queryset.filter(verified=False).order_by('-created_at')
@@ -468,8 +478,11 @@ class HelicopterViewSet(BaseViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = (Helicopter.objects.annotate(price=Min('rent_prices__price'))
-                    .select_related('owner', 'brand', 'model', 'vehicle_class', 'city', 'owner__lessor')
+        queryset = (Helicopter.objects.annotate(
+                        price=Min('rent_prices__price'),
+                        price_rub=Min(F('rent_prices__price') * F('currency__rate_to_rub'))
+                    )
+                    .select_related('owner', 'brand', 'model', 'vehicle_class', 'city', 'owner__lessor', 'currency')
                     .prefetch_related('payment_method', 'availabilities', 'documents', 'rent_prices', 'photos'))
         if user.is_authenticated:
             if user.role in ['admin', 'manager']:
@@ -488,13 +501,13 @@ class HelicopterViewSet(BaseViewSet):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         
-        # Применяем сортировку по аннотированному полю price
+        # Применяем сортировку по цене в рублях
         ordering = request.query_params.get('ordering')
         if ordering and 'price' in ordering:
             if ordering.startswith('-'):
-                queryset = queryset.order_by(F('price').desc(nulls_last=True))
+                queryset = queryset.order_by(F('price_rub').desc(nulls_last=True))
             else:
-                queryset = queryset.order_by(F('price').asc(nulls_last=True))
+                queryset = queryset.order_by(F('price_rub').asc(nulls_last=True))
         
         if request.user.is_authenticated and request.user.role in ['admin', 'manager'] and not ordering:
             unverified = queryset.filter(verified=False).order_by('-created_at')
@@ -561,8 +574,11 @@ class SpecialTechnicViewSet(BaseViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = (SpecialTechnic.objects.annotate(price=Min('rent_prices__price'))
-                    .select_related('owner', 'brand', 'model', 'city', 'owner__lessor', 'type_technic')
+        queryset = (SpecialTechnic.objects.annotate(
+                        price=Min('rent_prices__price'),
+                        price_rub=Min(F('rent_prices__price') * F('currency__rate_to_rub'))
+                    )
+                    .select_related('owner', 'brand', 'model', 'city', 'owner__lessor', 'type_technic', 'currency')
                     .prefetch_related('payment_method', 'availabilities', 'documents', 'rent_prices', 'photos'))
         if user.is_authenticated:
             if user.role in ['admin', 'manager']:
@@ -581,13 +597,13 @@ class SpecialTechnicViewSet(BaseViewSet):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         
-        # Применяем сортировку по аннотированному полю price
+        # Применяем сортировку по цене в рублях
         ordering = request.query_params.get('ordering')
         if ordering and 'price' in ordering:
             if ordering.startswith('-'):
-                queryset = queryset.order_by(F('price').desc(nulls_last=True))
+                queryset = queryset.order_by(F('price_rub').desc(nulls_last=True))
             else:
-                queryset = queryset.order_by(F('price').asc(nulls_last=True))
+                queryset = queryset.order_by(F('price_rub').asc(nulls_last=True))
         
         if request.user.is_authenticated and request.user.role in ['admin', 'manager'] and not ordering:
             unverified = queryset.filter(verified=False).order_by('-created_at')
@@ -950,7 +966,10 @@ class AllVehiclesListView(ListAPIView):
                 continue
             model_cls, _ = config
 
-            base_qs = model_cls.objects.all().annotate(price=Min('rent_prices__price'))
+            base_qs = model_cls.objects.all().annotate(
+                price=Min('rent_prices__price'),
+                price_rub=Min(F('rent_prices__price') * F('currency__rate_to_rub'))
+            )
 
             # фильтрация по пользователю
             if user.is_authenticated:
@@ -1011,8 +1030,8 @@ class AllVehiclesListView(ListAPIView):
             
             def get_sort_key(v):
                 if field == 'price':
-                    # price - аннотированное поле, может быть None
-                    return getattr(v, 'price', None) or float('inf')
+                    # Используем price_rub для корректной сортировки между валютами
+                    return getattr(v, 'price_rub', None) or float('inf')
                 elif field == 'average_rating':
                     return v.average_rating or 0
                 elif field == 'count_trip':
