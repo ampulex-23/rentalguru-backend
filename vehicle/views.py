@@ -938,6 +938,26 @@ class AllVehiclesListView(ListAPIView):
             )
             return unverified + verified
         
+        # Применяем общую сортировку после объединения всех типов транспорта
+        if ordering:
+            is_descending = ordering.startswith('-')
+            field = ordering.lstrip('-')
+            
+            def get_sort_key(v):
+                if field == 'price':
+                    # price - аннотированное поле, может быть None
+                    return getattr(v, 'price', None) or float('inf')
+                elif field == 'average_rating':
+                    return v.average_rating or 0
+                elif field == 'count_trip':
+                    return v.count_trip or 0
+                elif field == 'created_at':
+                    return v.created_at or v.pk
+                else:
+                    return v.pk
+            
+            all_vehicles = sorted(all_vehicles, key=get_sort_key, reverse=is_descending)
+        
         return all_vehicles
 
     def list(self, request, *args, **kwargs):
