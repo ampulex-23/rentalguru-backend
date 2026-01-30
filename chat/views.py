@@ -663,6 +663,13 @@ class RequestRentViewSet(viewsets.ModelViewSet):
                 is_owner = instance.owner == user
                 is_organizer = instance.organizer == user
                 
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f'ACCEPT: request_rent_id={instance.id}, on_request={instance.on_request}, '
+                           f'user={user.id}, owner={instance.owner.id if instance.owner else None}, '
+                           f'organizer={instance.organizer.id if instance.organizer else None}, '
+                           f'is_owner={is_owner}, is_organizer={is_organizer}')
+                
                 # Для on_request заявок: арендатор (organizer) может принять оффер
                 # Для обычных заявок: только владелец (owner) может принять
                 if instance.on_request:
