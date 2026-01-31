@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('app', '0032_add_unique_together_renter_documents'),
+        ('app', '0030_add_lessor_withdraw_request'),
     ]
 
     operations = [
