@@ -182,7 +182,7 @@ class RenterDocuments(models.Model):
 
     renter = models.ForeignKey(Renter, related_name='renter_documents', on_delete=models.CASCADE)
     title = models.CharField(max_length=30, choices=DOCUMENT_TYPE_CHOICES, verbose_name='Вид документа')
-    number = models.PositiveIntegerField(verbose_name='Номер')
+    number = models.CharField(max_length=50, verbose_name='Номер')
     photo = models.ImageField(upload_to=upload_renter_document, verbose_name='Фото')
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending', verbose_name='Статус проверки')
     issue_date = models.DateField(null=True, blank=True, verbose_name='Дата выдачи')

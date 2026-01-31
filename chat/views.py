@@ -942,6 +942,23 @@ class MessageSupportViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(sender=self.request.user)
 
+    @action(detail=False, methods=['post'], url_path='mark-read')
+    def mark_read(self, request):
+        """
+        Пометить все сообщения чата поддержки как прочитанные.
+        Ожидает chat_id в теле запроса.
+        """
+        chat_id = request.data.get('chat_id')
+        if not chat_id:
+            return Response({'error': 'chat_id is required'}, status=400)
+        
+        updated = MessageSupport.objects.filter(
+            chat_id=chat_id,
+            is_read=False
+        ).exclude(sender=request.user).update(is_read=True)
+        
+        return Response({'marked_as_read': updated})
+
 
 @extend_schema(summary="Количество непрочитанных сообщений",
                description="Возвращает количество непрочитанных сообщений во всех чатах пользователя, включая чат техподдержки.",
