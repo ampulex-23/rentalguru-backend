@@ -4,10 +4,11 @@ from .models import RenterDocuments, User
 
 class RenterDocumentsFilter(filters.FilterSet):
     status = filters.ChoiceFilter(choices=RenterDocuments.STATUS_CHOICES)
+    title = filters.ChoiceFilter(choices=RenterDocuments.DOCUMENT_TYPE_CHOICES)
 
     class Meta:
         model = RenterDocuments
-        fields = ['status']
+        fields = ['status', 'title']
 
 
 class UserFilter(filters.FilterSet):
